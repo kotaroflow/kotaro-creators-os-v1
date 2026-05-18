@@ -21,13 +21,18 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
   const [drafts, setDrafts] = useState<Content[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const isPresentationMode = user.uid === 'presentation-user';
-  const draftsStorageKey = `kotaro.presentation.contents.${profile.id}`;
+  const draftsStorageKey = `ygn.presentation.contents.${profile.id}`;
+  const legacyDraftsStorageKey = `kotaro.presentation.contents.${profile.id}`;
   const layoutTheme = getLayoutTheme(currentFragment, isDarkMode || false);
 
   // Fetch drafts
   React.useEffect(() => {
     if (isPresentationMode) {
-      const saved = localStorage.getItem(draftsStorageKey);
+      const saved = localStorage.getItem(draftsStorageKey) || localStorage.getItem(legacyDraftsStorageKey);
+      if (saved && !localStorage.getItem(draftsStorageKey)) {
+        localStorage.setItem(draftsStorageKey, saved);
+        localStorage.removeItem(legacyDraftsStorageKey);
+      }
       setDrafts(saved ? JSON.parse(saved) : []);
       return;
     }
@@ -40,7 +45,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
       setDrafts(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Content)));
     });
     return unsub;
-  }, [draftsStorageKey, isPresentationMode, profile.id]);
+  }, [draftsStorageKey, legacyDraftsStorageKey, isPresentationMode, profile.id]);
 
   const handleAnalyzeIdea = async () => {
     if (!userIdea.trim()) return;

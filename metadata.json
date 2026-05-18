@@ -1,5 +1,5 @@
 {
-  "name": "Kotaro Creators OS",
+  "name": "YGGNAROK",
   "description": "Multi-tenant content creation management system inspired by Overlord. Features AI integration, XP evolution, and multi-profile governance.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": []

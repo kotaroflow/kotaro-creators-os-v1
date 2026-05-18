@@ -5,9 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
-import { signOut } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
-import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
+import { db, handleFirestoreError, OperationType } from './lib/firebase';
 import { User, Profile, NazarickRole, OperationalMode, getEffectiveRank, CreatorFragment, SimulationState } from './types';
 import { Layout, LogOut, Shield, User as UserIcon, LayoutDashboard, Target, Share2, Library as LibraryIcon, BarChart3, Users, Settings, TrendingUp, Plus, Search, Trash2, Calendar, FileAudio, Menu, LayoutGrid, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -29,6 +28,9 @@ import YggnarokTransition, { YGGNAROK_TOTAL_DURATION, YggnarokContext, YggnarokM
 
 import SupremeSimulator from './components/admin/SupremeSimulator';
 import FragmentSelector from './components/admin/FragmentSelector';
+
+const AUTH_STORAGE_KEY = 'ygn.auth.user';
+const LEGACY_AUTH_STORAGE_KEY = 'kotaro.auth.user';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -103,8 +105,8 @@ export default function App() {
 
   const createPresentationUser = (): User => ({
     uid: 'presentation-user',
-    name: 'Apresentacao Kotaro',
-    email: 'demo@kotaro.local',
+    name: 'Apresentacao YGN',
+    email: 'demo@yggnarok.local',
     role: NazarickRole.MOMONGA,
     xp: 999,
     level: 99,
@@ -117,7 +119,8 @@ export default function App() {
 
   const handlePresentationLogin = () => {
     const demoUser = createPresentationUser();
-    localStorage.setItem('kotaro.auth.user', JSON.stringify(demoUser));
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(demoUser));
+    localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
     flushSync(() => {
       setUser(demoUser);
       setAuthError('');
@@ -128,22 +131,26 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    localStorage.removeItem('kotaro.auth.user');
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
     setUser(null);
     setActiveProfile(null);
     setView('profiles');
     setLoading(false);
-    await signOut(auth).catch(() => undefined);
   };
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('kotaro.auth.user');
+    const savedUser = localStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
 
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser) as User);
+        const parsedUser = JSON.parse(savedUser) as User;
+        setUser(parsedUser);
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsedUser));
+        localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
       } catch {
-        localStorage.removeItem('kotaro.auth.user');
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
       }
     }
 
@@ -200,8 +207,8 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-900 animate-pulse font-sans font-bold text-2xl tracking-tight">
-          CREA.OS <span className="text-xs text-slate-400 block font-normal">Sincronizando seus dados...</span>
+          <div className="text-slate-900 animate-pulse font-sans font-bold text-2xl tracking-tight">
+          YGGNAROK <span className="text-xs text-slate-400 block font-normal">Sincronizando dados locais...</span>
         </div>
       </div>
     );
@@ -294,10 +301,10 @@ export default function App() {
                   animate={{ opacity: 1 }} 
                   className="flex items-center gap-3 overflow-hidden"
                 >
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shrink-0", layoutTheme.accentBg)}>C</div>
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shrink-0", layoutTheme.accentBg)}>Y</div>
                   <div className="truncate">
-                    <h2 className={cn("font-sans font-bold text-sm leading-none tracking-tight uppercase", isDarkMode ? "text-white" : "text-slate-900")}>CREA.OS</h2>
-                    <span className="text-[10px] text-slate-500 font-mono block uppercase truncate">SaaS Multi-Tenant</span>
+                    <h2 className={cn("font-sans font-bold text-sm leading-none tracking-tight uppercase", isDarkMode ? "text-white" : "text-slate-900")}>YGGNAROK</h2>
+                    <span className="text-[10px] text-slate-500 font-mono block uppercase truncate">YGN Private OS</span>
                   </div>
                 </motion.div>
               )}
@@ -703,7 +710,7 @@ export default function App() {
                                   if (user.uid === 'presentation-user') {
                                     const nextUser = { ...user, ...confirmUpdate } as User;
                                     setUser(nextUser);
-                                    localStorage.setItem('kotaro.auth.user', JSON.stringify(nextUser));
+                                    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
                                   } else {
                                     await updateDoc(doc(db, 'users', user.uid), confirmUpdate);
                                   }
@@ -782,7 +789,7 @@ export default function App() {
                         <Layout className={cn("w-10 h-10 opacity-40", layoutTheme.accentText)} />
                       </div>
                       <h3 className={cn("font-bold text-2xl tracking-tight mb-2 uppercase", isDarkMode ? "text-white" : "text-slate-800")}>Interface em Manutenção</h3>
-                      <p className="text-sm text-slate-500 italic max-w-sm text-center font-medium">Os artesãos de Nazarick estão calibrando este setor. Disponível em breve no CREA.OS.</p>
+                      <p className="text-sm text-slate-500 italic max-w-sm text-center font-medium">Os artesãos de Nazarick estão calibrando este setor. Disponível em breve no YGGNAROK.</p>
                     </div>
                   )}
                 </motion.div>
@@ -866,7 +873,7 @@ export default function App() {
                   if (user.uid === 'presentation-user') {
                     const nextUser = { ...user, operationalMode: mode };
                     setUser(nextUser);
-                    localStorage.setItem('kotaro.auth.user', JSON.stringify(nextUser));
+                    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
                   } else {
                     await updateDoc(doc(db, 'users', user.uid), { operationalMode: mode });
                   }

@@ -13,7 +13,12 @@ Para este projeto, todas as interfaces, mensagens de erro, labels, menus e qualq
 
 ## Tom de Voz
 
-- O tom deve ser profissional, tecnologico e epico, referenciando Nazarick/CREA.OS quando fizer sentido.
+- O nome oficial do sistema e YGGNAROK. Use YGN como selo curto, prefixo ou abreviacao.
+- O nome antigo Kotaro Creators OS/Kotaro OS/KCOS/KCO esta obsoleto em texto visivel, documentacao nova e comentarios.
+- O tom deve ser profissional, tecnologico e epico, referenciando Nazarick/YGGNAROK quando fizer sentido.
+- Google Login esta fora do escopo atual. Estrutura futura de autenticacao pode existir, mas sem ativar login Google.
+- Agentes/IAs devem ser tratados como modulos funcionais sem avatar, skin, mascote ou tela visual propria por enquanto.
+- A prioridade visual atual e recriar e corrigir os cards do Sistema de Evolucao.
 
 ## Fluxo de Sincronizacao
 

@@ -54,8 +54,8 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
           <Sparkles className="w-10 h-10" />
         </motion.div>
         
-        <h1 className="font-sans font-black text-4xl text-white mb-2 tracking-tighter uppercase">CREA.OS</h1>
-        <p className="text-zinc-500 mb-12 text-[10px] uppercase font-black tracking-[0.4em]">Protocolo de Governança</p>
+        <h1 className="font-sans font-black text-4xl text-white mb-2 uppercase">YGGNAROK</h1>
+        <p className="text-zinc-500 mb-12 text-[10px] uppercase font-black tracking-[0.4em]">Selo YGN de Governanca</p>
         
         <div className="space-y-4">
           <motion.button 
@@ -66,11 +66,11 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
             className="w-full py-4 bg-indigo-600 text-white font-black rounded-lg text-sm flex items-center justify-center gap-3 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 group uppercase tracking-widest disabled:opacity-60 disabled:cursor-wait"
           >
             <LogIn className="w-5 h-5 text-indigo-200" />
-            {isSigningIn ? 'Entrando...' : 'Entrar no sistema'}
+            {isSigningIn ? 'Entrando...' : 'Entrar no YGGNAROK'}
           </motion.button>
 
           <p className="text-[10px] text-zinc-500 font-medium">
-            Sistema de gestão avançada para a elite de Nazarick.
+            Sistema privado de governanca, criacao e evolucao operacional.
           </p>
         </div>
         
@@ -80,14 +80,14 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
             <span className="text-[9px] font-black uppercase tracking-widest">Sincronia Criptografada</span>
           </div>
           <p className="text-[8px] text-zinc-600 uppercase tracking-widest max-w-[200px] mx-auto">
-            Ao entrar você aceita os termos de serviço e os protocolos de segurança.
+            Acesso local de desenvolvimento. Autenticacao externa esta fora do fluxo atual.
           </p>
         </div>
       </motion.div>
       
       {/* Footer Branding */}
       <div className="absolute bottom-8 left-0 right-0 text-center">
-        <p className="text-[10px] text-zinc-700 font-bold tracking-[0.5em] uppercase">MOMONGA INTEGRATED SYSTEMS</p>
+        <p className="text-[10px] text-zinc-700 font-bold tracking-[0.5em] uppercase">YGN INTERNAL SYSTEMS</p>
       </div>
     </div>
   );

@@ -14,12 +14,17 @@ export default function Library({ user, profile, isDarkMode, currentFragment = '
 
   const isSimplified = user.operationalMode === OperationalMode.EASY || user.operationalMode === OperationalMode.NORMAL;
   const isPresentationMode = user.uid === 'presentation-user';
-  const contentsStorageKey = `kotaro.presentation.contents.${profile.id}`;
+  const contentsStorageKey = `ygn.presentation.contents.${profile.id}`;
+  const legacyContentsStorageKey = `kotaro.presentation.contents.${profile.id}`;
   const layoutTheme = getLayoutTheme(currentFragment, isDarkMode || false);
 
   useEffect(() => {
     if (isPresentationMode) {
-      const saved = localStorage.getItem(contentsStorageKey);
+      const saved = localStorage.getItem(contentsStorageKey) || localStorage.getItem(legacyContentsStorageKey);
+      if (saved && !localStorage.getItem(contentsStorageKey)) {
+        localStorage.setItem(contentsStorageKey, saved);
+        localStorage.removeItem(legacyContentsStorageKey);
+      }
       setContents(saved ? JSON.parse(saved) : []);
       return;
     }
@@ -29,7 +34,7 @@ export default function Library({ user, profile, isDarkMode, currentFragment = '
       setContents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Content)));
     });
     return unsub;
-  }, [contentsStorageKey, isPresentationMode, profile.id]);
+  }, [contentsStorageKey, legacyContentsStorageKey, isPresentationMode, profile.id]);
 
   const filteredContents = contents.filter(c => {
     const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) || 

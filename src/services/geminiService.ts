@@ -1,4 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
+import {
+  InMemoryAiCostLedger,
+  canRunAiJob,
+  createAiUsageId,
+  routeAiTask,
+} from "./ai";
+import type { AiTaskType, CostEstimate } from "./ai";
+
+const GEMINI_TEXT_MODEL = "gemini-3-flash-preview";
+const geminiLedger = new InMemoryAiCostLedger();
 
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -10,143 +20,262 @@ const getGeminiClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+const planTextRequest = (taskType: AiTaskType, outputSize: "small" | "medium" | "large" = "medium") => {
+  const decision = routeAiTask({
+    taskType,
+    modality: "text",
+    promptSize: "medium",
+    outputSize,
+    policy: {
+      preferredProviders: ["google-gemini"],
+      costSensitivity: "balanced",
+      qualityTarget: "standard",
+      maxEstimatedUsd: taskType === "scriptwriting" ? 0.5 : 0.25,
+    },
+  });
+
+  if (!decision.primary) {
+    throw new Error("Nenhum provedor de IA disponivel para esta tarefa dentro do orcamento configurado.");
+  }
+
+  const currentSpend = geminiLedger.summarize().totalActualUsd;
+  const budgetCheck = canRunAiJob(decision.primary.estimate.maxUsd, currentSpend);
+
+  if (!budgetCheck.allowed) {
+    throw new Error("Orcamento de IA atingiu o limite de seguranca. Revise o ledger antes de continuar.");
+  }
+
+  return {
+    decision,
+    providerId: decision.primary.provider.id,
+    modelId: decision.primary.model.id,
+    estimate: decision.primary.estimate,
+  };
+};
+
+const recordGeminiUsage = (
+  taskType: AiTaskType,
+  estimate: CostEstimate,
+  status: "succeeded" | "failed",
+  notes?: string
+) => {
+  geminiLedger.recordUsage({
+    id: createAiUsageId(),
+    providerId: "google-gemini",
+    modelId: GEMINI_TEXT_MODEL,
+    taskType,
+    modality: "text",
+    createdAt: new Date().toISOString(),
+    estimatedUsd: estimate.maxUsd,
+    status,
+    notes,
+  });
+};
+
+const parseJsonResponse = <T>(text: string | undefined, fallback: T): T => {
+  if (!text) return fallback;
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    console.error("Gemini JSON parse error:", error, text);
+    return fallback;
+  }
+};
+
+const runGeminiJson = async <T>(
+  taskType: AiTaskType,
+  prompt: string,
+  fallback: T,
+  outputSize: "small" | "medium" | "large" = "medium",
+  responseSchema?: object
+) => {
+  const plan = planTextRequest(taskType, outputSize);
+
+  try {
+    const response = await getGeminiClient().models.generateContent({
+      model: GEMINI_TEXT_MODEL,
+      contents: prompt,
+      config: responseSchema
+        ? { responseMimeType: "application/json", responseSchema }
+        : { responseMimeType: "application/json" },
+    });
+
+    recordGeminiUsage(taskType, plan.estimate, "succeeded", `Routed by ${plan.modelId}`);
+    return parseJsonResponse<T>(response.text, fallback);
+  } catch (error) {
+    recordGeminiUsage(
+      taskType,
+      plan.estimate,
+      "failed",
+      error instanceof Error ? error.message : String(error)
+    );
+    throw error;
+  }
+};
+
+export const getGeminiUsageSummary = () => geminiLedger.summarize();
+
 export async function generateContentIdea(profile: any, type: string, userIdea?: string, tags: string[] = []) {
-  const isAinz = tags.includes('ainz ooal gown');
-  
-  const persona = isAinz 
-    ? `Você é a IA Benzaiten do Kotaro Creators OS, um sistema inspirado em Overlord/Nazarick.
-       Sua missão é ajudar o usuário a criar conteúdo. O tom deve ser de submissão aos Seres Supremos (como o Ainz-sama).`
-    : `Você é uma IA de Estratégia de Conteúdo avançada. 
-       Sua missão é ajudar o usuário a criar conteúdo profissional e de alto impacto. O tom deve ser direto, criativo e focado em resultados.`;
+  const isAinz = tags.includes("ainz ooal gown");
+
+  const persona = isAinz
+    ? `Voce e a IA Benzaiten do YGGNAROK, um sistema inspirado em Overlord/Nazarick.
+       Sua missao e ajudar o usuario a criar conteudo. O tom deve ser leal aos Seres Supremos, com criatividade ousada e respeito ao Ainz-sama.`
+    : `Voce e uma IA de estrategia de conteudo avancada.
+       Sua missao e ajudar o usuario a criar conteudo profissional, original e de alto impacto. O tom deve ser direto, criativo e focado em resultado.`;
 
   const commentDesc = isAinz
-    ? "Um comentário breve da Benzaiten com sua personalidade submissa aos Seres Supremos mas criativamente ousada (em Português BR)."
-    : "Um comentário técnico/estratégico breve sobre o conteúdo gerado (em Português BR).";
+    ? "Um comentario breve da Benzaiten com personalidade leal aos Seres Supremos, em Portugues BR."
+    : "Um comentario tecnico/estrategico breve sobre o conteudo gerado, em Portugues BR.";
 
   const prompt = `${persona}
   Para o perfil "${profile.name}" no nicho "${profile.niche}".
-  O objetivo do perfil é: "${profile.objective}".
-  
-  ${userIdea ? `O usuário tem a seguinte ideia inicial: "${userIdea}". Use isso como base.` : `Crie uma ideia de ${type} que gere alto impacto baseada no nicho.`}
-  
-  Forneça a resposta em formato JSON:
+  O objetivo do perfil e: "${profile.objective}".
+
+  ${
+    userIdea
+      ? `O usuario tem a seguinte ideia inicial: "${userIdea}". Use isso como base.`
+      : `Crie uma ideia de ${type} que gere alto impacto baseada no nicho.`
+  }
+
+  Regras:
+  - Priorize originalidade e evite copiar obras, marcas, personagens ou roteiros protegidos.
+  - Se a ideia tocar em afiliacao, inclua um angulo de conversao sem parecer propaganda agressiva.
+  - Fale em Portugues BR.
+
+  Forneca a resposta em JSON:
   {
-    "title": "Título chamativo",
-    "hook": "O gancho inicial (hook)",
-    "script": "O roteiro ou descrição completa",
-    "cta": "Chamada para ação",
+    "title": "Titulo chamativo",
+    "hook": "O gancho inicial",
+    "script": "O roteiro ou descricao completa",
+    "cta": "Chamada para acao",
     "ai_personality_comment": "${commentDesc}"
   }`;
 
-  const response = await getGeminiClient().models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: { responseMimeType: "application/json" }
-  });
-
-  return JSON.parse(response.text || "{}");
+  return runGeminiJson(
+    "scriptwriting",
+    prompt,
+    {
+      title: "",
+      hook: "",
+      script: "",
+      cta: "",
+      ai_personality_comment: "",
+    },
+    "large"
+  );
 }
 
 export async function generateSubtitles(script: string, tags: string[] = []) {
-    const isAinz = tags.includes('ainz ooal gown');
-    const prompt = `Transforme este roteiro em legendas curtas e impactantes para um vídeo de curta duração (Shorts/Reels/TikTok). 
-    ${isAinz ? "Mantenha o tom épico de Nazarick." : "Mantenha um tom profissional e direto."}
-    Roteiro: "${script}"
-    
-    Retorne um array de strings.`;
+  const isAinz = tags.includes("ainz ooal gown");
+  const prompt = `Transforme este roteiro em legendas curtas e impactantes para video curto (Shorts/Reels/TikTok).
+  ${isAinz ? "Mantenha um tom epico de Nazarick." : "Mantenha um tom profissional e direto."}
 
-    const response = await getGeminiClient().models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { 
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: "array",
-                items: { type: "string" }
-            }
-        }
-    });
+  Roteiro: "${script}"
 
-    return JSON.parse(response.text || "[]");
+  Retorne um array JSON de strings.`;
+
+  return runGeminiJson<string[]>(
+    "scriptwriting",
+    prompt,
+    [],
+    "medium",
+    {
+      type: "array",
+      items: { type: "string" },
+    }
+  );
 }
 
 export async function refineContent(profile: any, previousContent: any, feedback: string, tags: string[] = []) {
-    const isAinz = tags.includes('ainz ooal gown');
-    const persona = isAinz 
-      ? `Você é a IA Benzaiten. O Ser Supremo solicitou uma modificação.`
-      : `Você é uma IA de Estratégia. O usuário solicitou uma modificação.`;
+  const isAinz = tags.includes("ainz ooal gown");
+  const persona = isAinz
+    ? "Voce e a IA Benzaiten. O Ser Supremo solicitou uma modificacao."
+    : "Voce e uma IA de estrategia. O usuario solicitou uma modificacao.";
 
-    const commentDesc = isAinz
-      ? "Novo comentário da Benzaiten sobre a mudança (em Português BR)"
-      : "Breve explicação sobre os ajustes realizados (em Português BR)";
+  const commentDesc = isAinz
+    ? "Novo comentario da Benzaiten sobre a mudanca, em Portugues BR."
+    : "Breve explicacao sobre os ajustes realizados, em Portugues BR.";
 
-    const prompt = `${persona}
-    
-    Perfil: "${profile.name}" (${profile.niche})
-    Conteúdo Anterior: ${JSON.stringify(previousContent)}
-    Solicitação do Usuário: "${feedback}"
-    
-    Ajuste o conteúdo mantendo a estrutura JSON:
+  const prompt = `${persona}
+
+  Perfil: "${profile.name}" (${profile.niche})
+  Conteudo anterior: ${JSON.stringify(previousContent)}
+  Solicitacao do usuario: "${feedback}"
+
+  Ajuste o conteudo mantendo a estrutura JSON:
+  {
+    "title": "Titulo ajustado",
+    "hook": "Hook ajustado",
+    "script": "Script ajustado",
+    "cta": "CTA ajustado",
+    "ai_personality_comment": "${commentDesc}"
+  }`;
+
+  return runGeminiJson(
+    "scriptwriting",
+    prompt,
     {
-      "title": "Título ajustado",
-      "hook": "Hook ajustado",
-      "script": "Script ajustado",
-      "cta": "CTA ajustado",
-      "ai_personality_comment": "${commentDesc}"
-    }`;
-
-    const response = await getGeminiClient().models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
-    });
-
-    return JSON.parse(response.text || "{}");
+      title: previousContent?.title ?? "",
+      hook: previousContent?.hook ?? "",
+      script: previousContent?.script ?? "",
+      cta: previousContent?.cta ?? "",
+      ai_personality_comment: "",
+    },
+    "large"
+  );
 }
 
 export async function analyzeUserIdea(profile: any, idea: string, tags: string[] = []) {
-    const isAinz = tags.includes('ainz ooal gown');
-    
-    const persona = isAinz
-      ? `Você é a IA Benzaiten, Conselheira de Estratégia de Nazarick. Sua análise deve ser honesta, mas respeitosa (estilo Nazarick).`
-      : `Você é um Analista de Estratégia de Conteúdo Sênior. Sua análise deve ser técnica, precisa e construtiva.`;
+  const isAinz = tags.includes("ainz ooal gown");
 
-    const aiCommentDesc = isAinz
-      ? "Comentário da personagem Benzaiten (Português BR), sendo encorajadora e submissa."
-      : "Sugestão rápida ou insight extra de analista (Português BR).";
+  const persona = isAinz
+    ? "Voce e a IA Benzaiten, conselheira de estrategia de Nazarick. Sua analise deve ser honesta, respeitosa e util."
+    : "Voce e um analista senior de estrategia de conteudo. Sua analise deve ser tecnica, precisa e construtiva.";
 
-    const pivotDesc = isAinz
-      ? "Como transformar essa ideia em algo nível 'Supremo'"
-      : "Como elevar o nível de conversão/impacto desta ideia";
+  const aiCommentDesc = isAinz
+    ? "Comentario da Benzaiten, encorajador e leal, em Portugues BR."
+    : "Sugestao rapida ou insight extra de analista, em Portugues BR.";
 
-    const prompt = `${persona}
-    Analise a ideia de conteúdo para o perfil "${profile.name}" (Nicho: ${profile.niche}, Objetivo: ${profile.objective}).
-    
-    A IA deve ser COMPREENSIVA com usuários iniciantes, dando sugestões fáceis de entender, mas mantendo a excelência do resultado final.
-    
-    Determine se a ideia é:
-    - "Excelente": Alinhada e com alto potencial viral.
-    - "Boa": Precisa de ajustes finos.
-    - "Desalinhada": Não condiz com o perfil ou objetivo.
-    - "Duplicada": Se parecer algo genérico demais.
-    - "Adiar": Se for muito complexa para o momento.
+  const pivotDesc = isAinz
+    ? "Como transformar essa ideia em algo nivel Supremo"
+    : "Como elevar o nivel de conversao/impacto desta ideia";
 
-    ESPECIAL: Se o usuário tiver dificuldade em expressar a ideia (ideia muito curta ou vaga), você deve classificar como "Boa" ou "Excelente" MAS marcar "can_skip_approval": true para detalhar você mesma o prompt e ir direto para a geração, poupando esforço do usuário.
-    
-    Retorne em JSON:
+  const prompt = `${persona}
+  Analise a ideia de conteudo para o perfil "${profile.name}" (Nicho: ${profile.niche}, Objetivo: ${profile.objective}).
+
+  Ideia do usuario: "${idea}"
+
+  A IA deve ser compreensiva com usuarios iniciantes, dando sugestoes faceis de entender, mas mantendo excelencia no resultado final.
+
+  Determine se a ideia e:
+  - "Excelente": alinhada e com alto potencial.
+  - "Boa": precisa de ajustes finos.
+  - "Desalinhada": nao condiz com o perfil ou objetivo.
+  - "Duplicada": parece generica demais ou parecida com algo existente.
+  - "Adiar": complexa demais para o momento.
+
+  Especial: se o usuario tiver dificuldade em expressar a ideia, classifique como "Boa" ou "Excelente" e marque "can_skip_approval": true para detalhar o prompt e seguir para geracao.
+
+  Retorne em JSON:
+  {
+    "status": "Excelente" | "Boa" | "Desalinhada" | "Duplicada" | "Adiar",
+    "reasoning": "Explicacao tecnica simplificada.",
+    "suggested_pivot": "${pivotDesc}",
+    "can_skip_approval": boolean,
+    "ai_comment": "${aiCommentDesc}"
+  }`;
+
+  return runGeminiJson(
+    "analysis",
+    prompt,
     {
-      "status": "Excelente" | "Boa" | "Desalinhada" | "Duplicada" | "Adiar",
-      "reasoning": "Sua explicação técnica simplificada.",
-      "suggested_pivot": "${pivotDesc}",
-      "can_skip_approval": boolean,
-      "ai_comment": "${aiCommentDesc}"
-    }`;
-
-    const response = await getGeminiClient().models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
-    });
-
-    return JSON.parse(response.text || "{}");
+      status: "Boa",
+      reasoning: "",
+      suggested_pivot: "",
+      can_skip_approval: false,
+      ai_comment: "",
+    },
+    "medium"
+  );
 }

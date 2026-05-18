@@ -29,6 +29,8 @@ Read the full workflow in [docs/SYNC_WORKFLOW.md](docs/SYNC_WORKFLOW.md).
 
 The base for backend migration, AI provider routing, cost control, storage strategy, and official platform data ingestion is documented in [docs/OS_INFRA_AI_DATA_ROADMAP.md](docs/OS_INFRA_AI_DATA_ROADMAP.md).
 
+Current naming, auth, agent and evolution-card rules are documented in [docs/YGGNAROK_PROJECT_RULES.md](docs/YGGNAROK_PROJECT_RULES.md).
+
 To create a clean ZIP for Google AI Studio while GitHub is not connected:
 
 ```powershell

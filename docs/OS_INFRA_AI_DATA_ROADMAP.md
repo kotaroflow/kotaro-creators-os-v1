@@ -1,8 +1,8 @@
-# Kotaro OS - Base de Infra, IA e Dados
+# YGGNAROK - Base de Infra, IA e Dados
 
 Data da pesquisa: 2026-05-18
 
-Este documento define a base para o Kotaro OS sair de uma dependencia rigida do Firebase e virar um sistema privado com backend mais portavel, armazenamento barato para midias, roteador de IA por tarefa/custo/qualidade, ledger de gasto e coleta de dados reais por APIs oficiais.
+Este documento define a base para o YGGNAROK sair de uma dependencia rigida do Firebase e virar um sistema privado com backend mais portavel, armazenamento barato para midias, roteador de IA por tarefa/custo/qualidade, ledger de gasto e coleta de dados reais por APIs oficiais.
 
 ## Decisao principal
 
@@ -23,7 +23,7 @@ O ideal nao e fazer uma troca brusca agora. Primeiro isolamos o Firebase em serv
 
 | Opcao | Uso ideal | Opiniao |
 | --- | --- | --- |
-| Firebase | Prototipo e login Google rapido | Bom para agora, mas nao deve ser o nucleo final |
+| Firebase | Prototipo, dados legados e estrutura temporaria | Bom para manter onde ja existe, mas nao deve ser o nucleo final |
 | Supabase | Auth + Postgres + dados relacionais | Melhor destino principal para o OS |
 | Appwrite | Backend open-source completo | Bom candidato se voce quiser sair do ecossistema Google/Supabase |
 | PocketBase | Uso privado pequeno e barato | Otimo laboratorio, mas exige cuidado para escala/backup |
@@ -151,7 +151,7 @@ Guardrails obrigatorios:
 
 ```mermaid
 flowchart LR
-  U["Usuario"] --> OS["Kotaro OS"]
+  U["Usuario"] --> OS["YGGNAROK"]
   OS --> R["AI Router"]
   R --> D["Draft barato/local"]
   R --> P["Premium final"]

@@ -8,12 +8,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 
 
-const DEMO_PROFILES_KEY = 'kotaro.presentation.profiles';
+const DEMO_PROFILES_KEY = 'ygn.presentation.profiles';
+const LEGACY_DEMO_PROFILES_KEY = 'kotaro.presentation.profiles';
 
 const defaultProfiles = (userId: string): Profile[] => [
   {
-    id: 'demo-profile-kotaro',
-    name: 'Kotaro Creators',
+    id: 'demo-profile-ygn',
+    name: 'YGGNAROK Core',
     niche: 'Conteudo e IA',
     objective: 'Planejar, criar e organizar conteudos de alto impacto',
     socialAccounts: {},
@@ -32,7 +33,7 @@ const defaultProfiles = (userId: string): Profile[] => [
 ];
 
 const readLocalProfiles = (userId: string): Profile[] => {
-  const saved = localStorage.getItem(DEMO_PROFILES_KEY);
+  const saved = localStorage.getItem(DEMO_PROFILES_KEY) || localStorage.getItem(LEGACY_DEMO_PROFILES_KEY);
   if (!saved) {
     const profiles = defaultProfiles(userId);
     localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(profiles));
@@ -41,7 +42,10 @@ const readLocalProfiles = (userId: string): Profile[] => {
 
   try {
     const parsed = JSON.parse(saved) as Profile[];
-    return parsed.length > 0 ? parsed : defaultProfiles(userId);
+    const migrated = parsed.length > 0 ? parsed : defaultProfiles(userId);
+    localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(migrated));
+    localStorage.removeItem(LEGACY_DEMO_PROFILES_KEY);
+    return migrated;
   } catch {
     const profiles = defaultProfiles(userId);
     localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(profiles));

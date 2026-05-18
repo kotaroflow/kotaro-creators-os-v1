@@ -1,517 +1,448 @@
 import React from 'react';
 import { User, Profile, getEffectiveRank, NazarickRole, CreatorFragment } from '../../types';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
-import { 
-  Lock, Unlock, ChevronRight, Zap, Target, Star, Shield, Crosshair, 
-  Crown, Skull, Flame, BookOpen, Eye, Sword, Monitor, Book, Waves, 
-  Atom, Compass, Cpu, Anchor, Ghost, Sparkles, Clock, Hourglass, Scan, Map
+import {
+  Atom,
+  BookOpen,
+  Compass,
+  Crown,
+  Eye,
+  Flame,
+  Ghost,
+  Hourglass,
+  Lock,
+  Monitor,
+  Shield,
+  Sparkles,
+  Star,
+  Sword,
+  Target,
+  Unlock,
+  Waves,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react';
-import AdminSupremeDashboardCard from '../dashboard/AdminSupremeDashboardCard';
 
-const RANK_TIERS = [
-  {
-    rank: "F", anime: "Naruto", title: "Iniciante da Vila", 
-    xpRequired: 0, minLevel: 1, minKarma: 0, 
-    requirements: "Começar a jornada no Kreators OS.", benefits: "Acesso básico ao sistema.", icon: Flame,
-    theme: {
-      wrapper: "bg-[#fff7ed] dark:bg-[#1a0f05] border-[#fdba74] dark:border-[#7c2d12]",
-      header: "bg-orange-500/10 dark:bg-orange-900/20",
-      progressBar: "bg-orange-200 dark:bg-orange-950",
-      progressFill: "bg-orange-500",
-      textPrimary: "text-orange-900 dark:text-orange-100",
-      textSecondary: "text-orange-600 dark:text-orange-400",
-      badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 border-orange-200 dark:border-orange-800",
-      aura: "hover:shadow-[0_0_30px_rgba(249,115,22,0.15)]",
-      patternUtils: "opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/japanese-sayagata.png')]"
-    }
+type EvolutionTone = 'ash' | 'ember' | 'jade' | 'aqua' | 'violet' | 'gold' | 'rose' | 'void';
+
+interface EvolutionTier {
+  rank: string;
+  title: string;
+  kanji: string;
+  concept: string;
+  archetype: string;
+  xpRequired: number;
+  minLevel: number;
+  minKarma: number;
+  requirement: string;
+  benefit: string;
+  icon: LucideIcon;
+  tone: EvolutionTone;
+}
+
+const toneStyles: Record<EvolutionTone, {
+  surface: string;
+  border: string;
+  text: string;
+  muted: string;
+  fill: string;
+  glow: string;
+}> = {
+  ash: {
+    surface: 'from-slate-50/88 via-white/74 to-slate-100/62 dark:from-slate-950/82 dark:via-slate-900/64 dark:to-slate-950/82',
+    border: 'border-slate-200/70 dark:border-white/10',
+    text: 'text-slate-900 dark:text-slate-100',
+    muted: 'text-slate-500 dark:text-slate-400',
+    fill: 'bg-slate-700 dark:bg-slate-200',
+    glow: 'shadow-[0_18px_60px_rgba(15,23,42,0.16)]',
   },
-  {
-    rank: "E-", anime: "Death Note", title: "Estrategista Sombrio", 
-    xpRequired: 500, minLevel: 2, minKarma: 20, 
-    requirements: "Concluir 1 projeto de alta estratégia.", benefits: "Planejamento avançado.", icon: BookOpen,
-    theme: {
-      wrapper: "bg-slate-50 dark:bg-[#0a0a0a] border-slate-300 dark:border-red-950",
-      header: "bg-slate-200/50 dark:bg-red-950/20",
-      progressBar: "bg-slate-300 dark:bg-red-950",
-      progressFill: "bg-red-700 dark:bg-red-600",
-      textPrimary: "text-slate-900 dark:text-red-50",
-      textSecondary: "text-slate-600 dark:text-red-400",
-      badge: "bg-slate-200 text-slate-800 dark:bg-red-950/50 dark:text-red-300 border-slate-300 dark:border-red-900",
-      aura: "hover:shadow-[0_0_30px_rgba(185,28,28,0.15)]",
-      patternUtils: "opacity-[0.04] bg-[url('https://www.transparenttextures.com/patterns/notebook.png')]"
-    }
+  ember: {
+    surface: 'from-orange-50/88 via-white/74 to-amber-100/62 dark:from-[#1d0d05]/82 dark:via-[#2b1608]/62 dark:to-slate-950/82',
+    border: 'border-orange-200/70 dark:border-orange-400/18',
+    text: 'text-orange-950 dark:text-orange-100',
+    muted: 'text-orange-700/75 dark:text-orange-300/75',
+    fill: 'bg-orange-500',
+    glow: 'shadow-[0_18px_64px_rgba(249,115,22,0.18)]',
   },
-  {
-    rank: "E", anime: "Tokyo Ghoul", title: "Desperto pela Dor", 
-    xpRequired: 1500, minLevel: 3, minKarma: 50, 
-    requirements: "Sobreviver a 5 Ordens Críticas.", benefits: "Modo Instável desbloqueado.", icon: Eye,
-    theme: {
-      wrapper: "bg-zinc-100 dark:bg-[#111113] border-zinc-300 dark:border-red-900",
-      header: "bg-zinc-200/50 dark:bg-red-900/10",
-      progressBar: "bg-zinc-300 dark:bg-zinc-900",
-      progressFill: "bg-red-600 dark:bg-red-500",
-      textPrimary: "text-zinc-900 dark:text-red-100",
-      textSecondary: "text-red-700 dark:text-red-500",
-      badge: "bg-red-100 text-red-800 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-800/30",
-      aura: "hover:shadow-[0_0_40px_rgba(220,38,38,0.2)]",
-      patternUtils: "opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')]"
-    }
+  jade: {
+    surface: 'from-emerald-50/88 via-white/74 to-teal-100/62 dark:from-[#051812]/84 dark:via-[#09251c]/62 dark:to-slate-950/82',
+    border: 'border-emerald-200/70 dark:border-emerald-300/18',
+    text: 'text-emerald-950 dark:text-emerald-100',
+    muted: 'text-emerald-700/75 dark:text-emerald-300/75',
+    fill: 'bg-emerald-500',
+    glow: 'shadow-[0_18px_64px_rgba(16,185,129,0.16)]',
   },
-  {
-    rank: "E+", anime: "Akame ga Kill!", title: "Assassino Noturno", 
-    xpRequired: 3000, minLevel: 5, minKarma: 100, 
-    requirements: "Eliminar 10 gargalos operativos.", benefits: "Ações rápidas letais.", icon: Sword,
-    theme: {
-      wrapper: "bg-rose-50 dark:bg-[#1f0a0e] border-rose-200 dark:border-rose-900/50",
-      header: "bg-rose-100/50 dark:bg-rose-950/30",
-      progressBar: "bg-rose-200 dark:bg-rose-950",
-      progressFill: "bg-rose-600 dark:bg-rose-600",
-      textPrimary: "text-rose-950 dark:text-rose-50",
-      textSecondary: "text-rose-700 dark:text-rose-400",
-      badge: "bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 border-rose-200 dark:border-rose-800",
-      aura: "hover:shadow-[0_0_30px_rgba(225,29,72,0.2)]",
-      patternUtils: "opacity-[0.04] bg-[url('https://www.transparenttextures.com/patterns/brushed-alum.png')]"
-    }
+  aqua: {
+    surface: 'from-cyan-50/88 via-white/74 to-sky-100/62 dark:from-[#061722]/84 dark:via-[#082637]/62 dark:to-slate-950/82',
+    border: 'border-cyan-200/70 dark:border-cyan-300/18',
+    text: 'text-cyan-950 dark:text-cyan-100',
+    muted: 'text-cyan-700/75 dark:text-cyan-300/75',
+    fill: 'bg-cyan-500',
+    glow: 'shadow-[0_18px_64px_rgba(6,182,212,0.16)]',
   },
-  {
-    rank: "D-", anime: "Sword Art Online", title: "Linker Digital", 
-    xpRequired: 5000, minLevel: 7, minKarma: 150, 
-    requirements: "Completar 1º projeto complexo inteiro.", benefits: "HUD Avançado + Análise de Dados.", icon: Monitor,
-    theme: {
-      wrapper: "bg-cyan-50 dark:bg-[#081b24] border-cyan-200 dark:border-cyan-900/50",
-      header: "bg-cyan-100/50 dark:bg-cyan-950/30",
-      progressBar: "bg-cyan-200 dark:bg-cyan-950",
-      progressFill: "bg-cyan-500",
-      textPrimary: "text-cyan-950 dark:text-cyan-100",
-      textSecondary: "text-cyan-700 dark:text-cyan-400",
-      badge: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800",
-      aura: "hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]",
-      patternUtils: "opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"
-    }
+  violet: {
+    surface: 'from-violet-50/88 via-white/74 to-indigo-100/62 dark:from-[#100820]/84 dark:via-[#19103c]/62 dark:to-slate-950/82',
+    border: 'border-violet-200/70 dark:border-violet-300/18',
+    text: 'text-violet-950 dark:text-violet-100',
+    muted: 'text-violet-700/75 dark:text-violet-300/75',
+    fill: 'bg-violet-500',
+    glow: 'shadow-[0_18px_64px_rgba(139,92,246,0.18)]',
   },
-  {
-    rank: "D", anime: "Black Clover", title: "Mago Determinado", 
-    xpRequired: 8000, minLevel: 10, minKarma: 200, 
-    requirements: "Obter grimório de organização.", benefits: "Poder rodar Múltiplas Ordens simultâneas.", icon: Book,
-    theme: {
-      wrapper: "bg-emerald-50 dark:bg-[#07130a] border-emerald-200 dark:border-emerald-900/50",
-      header: "bg-emerald-100/50 dark:bg-emerald-950/30",
-      progressBar: "bg-emerald-200 dark:bg-emerald-950",
-      progressFill: "bg-emerald-600 dark:bg-emerald-500",
-      textPrimary: "text-emerald-950 dark:text-emerald-100",
-      textSecondary: "text-emerald-700 dark:text-emerald-500",
-      badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
-      aura: "hover:shadow-[0_0_30px_rgba(16,185,129,0.15)]",
-      patternUtils: "opacity-[0.04] bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')]"
-    }
+  gold: {
+    surface: 'from-amber-50/92 via-white/76 to-yellow-100/66 dark:from-[#1f1705]/86 dark:via-[#2e2308]/64 dark:to-slate-950/86',
+    border: 'border-amber-200/80 dark:border-amber-300/22',
+    text: 'text-amber-950 dark:text-amber-100',
+    muted: 'text-amber-700/75 dark:text-amber-300/75',
+    fill: 'bg-amber-500',
+    glow: 'shadow-[0_20px_72px_rgba(217,119,6,0.22)]',
   },
-  {
-    rank: "D+", anime: "Fairy Tail", title: "Mago da Guilda", 
-    xpRequired: 12000, minLevel: 15, minKarma: 300, 
-    requirements: "Colaborar com a Guilda (Time).", benefits: "10% de Bônus passivo de XP Global.", icon: Flame,
-    theme: {
-      wrapper: "bg-red-50 dark:bg-[#200e0a] border-red-200 dark:border-red-900/50",
-      header: "bg-red-100/50 dark:bg-red-950/30",
-      progressBar: "bg-red-200 dark:bg-red-950",
-      progressFill: "bg-red-500 dark:bg-red-500",
-      textPrimary: "text-red-950 dark:text-red-100",
-      textSecondary: "text-amber-600 dark:text-amber-500",
-      badge: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-800",
-      aura: "hover:shadow-[0_0_30px_rgba(239,68,68,0.2)]",
-      patternUtils: "opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')]"
-    }
+  rose: {
+    surface: 'from-rose-50/88 via-white/74 to-red-100/62 dark:from-[#240811]/84 dark:via-[#330d18]/62 dark:to-slate-950/82',
+    border: 'border-rose-200/70 dark:border-rose-300/18',
+    text: 'text-rose-950 dark:text-rose-100',
+    muted: 'text-rose-700/75 dark:text-rose-300/75',
+    fill: 'bg-rose-500',
+    glow: 'shadow-[0_18px_64px_rgba(244,63,94,0.18)]',
   },
-  {
-    rank: "C-", anime: "Demon Slayer", title: "Espadachim Elementar", 
-    xpRequired: 18000, minLevel: 20, minKarma: 450, 
-    requirements: "Foco Total: 50 Ordens perfeitas.", benefits: "Agendamento avançado (Respirar).", icon: Waves,
-    theme: {
-      wrapper: "bg-teal-50 dark:bg-[#061814] border-teal-200 dark:border-teal-900/50",
-      header: "bg-teal-100/50 dark:bg-teal-950/30",
-      progressBar: "bg-teal-200 dark:bg-teal-950",
-      progressFill: "bg-teal-500",
-      textPrimary: "text-teal-950 dark:text-teal-100",
-      textSecondary: "text-teal-700 dark:text-teal-400",
-      badge: "bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border-teal-200 dark:border-teal-800",
-      aura: "hover:shadow-[0_0_30px_rgba(20,184,166,0.2)]",
-      patternUtils: "opacity-[0.08] bg-[url('https://www.transparenttextures.com/patterns/japanese-sayagata.png')]"
-    }
+  void: {
+    surface: 'from-slate-950 via-slate-900 to-black dark:from-black dark:via-[#0b0714] dark:to-black',
+    border: 'border-amber-300/28 dark:border-amber-300/26',
+    text: 'text-amber-100',
+    muted: 'text-amber-300/72',
+    fill: 'bg-amber-400',
+    glow: 'shadow-[0_24px_90px_rgba(245,158,11,0.24)]',
   },
-  {
-    rank: "C", anime: "FMA: Brotherhood", title: "Alquimista Certificado", 
-    xpRequired: 25000, minLevel: 25, minKarma: 600, 
-    requirements: "Troca Equivalente de recursos.", benefits: "Criação de Ativos Alquímicos I.A.", icon: Atom,
-    theme: {
-      wrapper: "bg-[#fdf8f5] dark:bg-[#1a1210] border-[#e7bc91] dark:border-[#7c4a3a]",
-      header: "bg-[#f5e6d3]/50 dark:bg-[#3a1d13]/30",
-      progressBar: "bg-[#e7bc91] dark:bg-[#3a1d13]",
-      progressFill: "bg-[#a42424] dark:bg-[#dc2626]",
-      textPrimary: "text-[#5e2b1d] dark:text-[#f3dcb1]",
-      textSecondary: "text-[#a42424] dark:text-[#dc2626]",
-      badge: "bg-[#f5e6d3] text-[#a42424] dark:bg-[#3a1d13]/50 dark:text-[#f3dcb1] border-[#e7bc91] dark:border-[#7c4a3a]",
-      aura: "hover:shadow-[0_0_30px_rgba(164,36,36,0.15)]",
-      patternUtils: "opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/old-mathematics.png')]"
-    }
-  },
-  {
-    rank: "C+", anime: "Blue Lock", title: "Egoísta Implacável", 
-    xpRequired: 35000, minLevel: 30, minKarma: 800, 
-    requirements: "Superar estatísticas do mês anterior.", benefits: "Estatísticas em tempo real avançadas.", icon: Target,
-    theme: {
-      wrapper: "bg-blue-50 dark:bg-[#040c1e] border-blue-300 dark:border-blue-900",
-      header: "bg-blue-100/50 dark:bg-blue-900/30",
-      progressBar: "bg-blue-200 dark:bg-blue-950",
-      progressFill: "bg-blue-600 dark:bg-blue-500",
-      textPrimary: "text-blue-950 dark:text-blue-100",
-      textSecondary: "text-blue-700 dark:text-blue-400",
-      badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-      aura: "hover:shadow-[0_0_35px_rgba(37,99,235,0.25)]",
-      patternUtils: "opacity-[0.06] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"
-    }
-  },
-  {
-    rank: "B-", anime: "Hunter x Hunter", title: "Caçador Licenciado", 
-    xpRequired: 50000, minLevel: 35, minKarma: 1000, 
-    requirements: "Passar na auditoria Hunter da diretoria.", benefits: "Acesso a todas as masterclasses.", icon: Compass,
-    theme: {
-      wrapper: "bg-lime-50 dark:bg-[#111a0d] border-lime-300 dark:border-lime-900",
-      header: "bg-lime-100/50 dark:bg-lime-900/20",
-      progressBar: "bg-lime-200 dark:bg-lime-950",
-      progressFill: "bg-lime-600 dark:bg-lime-500",
-      textPrimary: "text-lime-950 dark:text-lime-100",
-      textSecondary: "text-lime-700 dark:text-lime-500",
-      badge: "bg-lime-100 text-lime-800 dark:bg-lime-900/50 dark:text-lime-400 border-lime-200 dark:border-lime-800",
-      aura: "hover:shadow-[0_0_30px_rgba(101,163,13,0.15)]",
-      patternUtils: "opacity-[0.04] bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')]"
-    }
-  },
-  {
-    rank: "B", anime: "Cyberpunk: Edgerunners", title: "Mercenário Cromado", 
-    xpRequired: 75000, minLevel: 40, minKarma: 1500, 
-    requirements: "Superar a velocidade média do sistema.", benefits: "Overclock: Limites de I.A. turbinados.", icon: Cpu,
-    theme: {
-      wrapper: "bg-fuchsia-50 dark:bg-[#140514] border-fuchsia-300 dark:border-fuchsia-900",
-      header: "bg-fuchsia-100/50 dark:bg-fuchsia-900/30",
-      progressBar: "bg-fuchsia-200 dark:bg-fuchsia-950",
-      progressFill: "bg-fuchsia-500 dark:bg-fuchsia-400",
-      textPrimary: "text-fuchsia-950 dark:text-fuchsia-100",
-      textSecondary: "text-cyan-600 dark:text-cyan-400",
-      badge: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800",
-      aura: "hover:shadow-[0_0_40px_rgba(217,70,239,0.3)]",
-      patternUtils: "opacity-[0.1] bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')]"
-    }
-  },
-  {
-    rank: "B+", anime: "One Piece", title: "Supernova", 
-    xpRequired: 100000, minLevel: 50, minKarma: 2000, 
-    requirements: "Alcançar 1 milhão de visualizações globais.", benefits: "Desbloqueio de Mapa Estratégico Global.", icon: Anchor,
-    theme: {
-      wrapper: "bg-sky-50 dark:bg-[#071724] border-sky-300 dark:border-sky-900",
-      header: "bg-sky-100/50 dark:bg-sky-900/30",
-      progressBar: "bg-sky-200 dark:bg-sky-950",
-      progressFill: "bg-amber-500 dark:bg-amber-400",
-      textPrimary: "text-sky-950 dark:text-sky-100",
-      textSecondary: "text-sky-700 dark:text-sky-400",
-      badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border-amber-200 dark:border-amber-800",
-      aura: "hover:shadow-[0_0_40px_rgba(245,158,11,0.2)]",
-      patternUtils: "opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/waves-pattern.png')]"
-    }
-  },
-  {
-    rank: "A-", anime: "Jujutsu Kaisen", title: "Feiticeiro de Grau-Especial", 
-    xpRequired: 150000, minLevel: 60, minKarma: 3000, 
-    requirements: "Dominar a Expansão de Domínio (Automação).", benefits: "Feitiços de Automação liberados.", icon: Ghost,
-    theme: {
-      wrapper: "bg-indigo-50 dark:bg-[#090514] border-indigo-300 dark:border-indigo-900",
-      header: "bg-indigo-100/50 dark:bg-indigo-900/30",
-      progressBar: "bg-indigo-200 dark:bg-indigo-950",
-      progressFill: "bg-indigo-800 dark:bg-indigo-500",
-      textPrimary: "text-indigo-950 dark:text-indigo-100",
-      textSecondary: "text-indigo-700 dark:text-indigo-400",
-      badge: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
-      aura: "hover:shadow-[0_0_40px_rgba(99,102,241,0.3)]",
-      patternUtils: "opacity-[0.08] bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]"
-    }
-  },
-  {
-    rank: "A", anime: "Chainsaw Man", title: "Demônio do Medo", 
-    xpRequired: 250000, minLevel: 75, minKarma: 5000, 
-    requirements: "Contrato Sangrento (100% de Win-rate mensal).", benefits: "Execução massiva de tarefas em 1 click.", icon: Zap,
-    theme: {
-      wrapper: "bg-orange-50 dark:bg-[#170804] border-orange-300 dark:border-orange-900",
-      header: "bg-orange-100/50 dark:bg-orange-900/30",
-      progressBar: "bg-orange-200 dark:bg-orange-950",
-      progressFill: "bg-orange-600 dark:bg-orange-500",
-      textPrimary: "text-orange-950 dark:text-orange-100",
-      textSecondary: "text-orange-700 dark:text-orange-500",
-      badge: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-800",
-      aura: "hover:shadow-[0_0_40px_rgba(234,88,12,0.3)]",
-      patternUtils: "opacity-[0.06] bg-[url('https://www.transparenttextures.com/patterns/rusty-metal.png')]"
-    }
-  },
-  {
-    rank: "A+", anime: "Frieren: Beyond Journey's End", title: "Mago Elfo Eterno", 
-    xpRequired: 400000, minLevel: 90, minKarma: 8000, 
-    requirements: "Manter taxa de crescimento por 6 meses.", benefits: "Banco de Sabedoria de longo prazo (IA).", icon: Sparkles,
-    theme: {
-      wrapper: "bg-emerald-50/50 dark:bg-[#071310] border-emerald-200 dark:border-emerald-900/40",
-      header: "bg-emerald-100/30 dark:bg-emerald-900/20",
-      progressBar: "bg-emerald-100 dark:bg-emerald-950/50",
-      progressFill: "bg-emerald-400 dark:bg-emerald-400",
-      textPrimary: "text-emerald-900 dark:text-emerald-100",
-      textSecondary: "text-emerald-600 dark:text-emerald-500",
-      badge: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-100 dark:border-amber-800/40",
-      aura: "hover:shadow-[0_0_45px_rgba(52,211,153,0.15)]",
-      patternUtils: "opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"
-    }
-  },
-  {
-    rank: "S", anime: "Re:Zero", title: "Retornador da Morte", 
-    xpRequired: 600000, minLevel: 100, minKarma: 12000, 
-    requirements: "Recuperar 3 projetos totalmente falhos.", benefits: "Pontos de Checkpoint (Save-states da conta).", icon: Clock,
-    theme: {
-      wrapper: "bg-violet-50 dark:bg-[#0b0814] border-violet-300 dark:border-violet-900",
-      header: "bg-violet-100/50 dark:bg-violet-900/30",
-      progressBar: "bg-violet-200 dark:bg-violet-950",
-      progressFill: "bg-violet-600 dark:bg-violet-500",
-      textPrimary: "text-violet-950 dark:text-violet-100",
-      textSecondary: "text-violet-700 dark:text-violet-400",
-      badge: "bg-white text-slate-800 dark:bg-white/10 dark:text-white border-slate-200 dark:border-white/20",
-      aura: "hover:shadow-[0_0_50px_rgba(139,92,246,0.3)]",
-      patternUtils: "opacity-[0.07] bg-[url('https://www.transparenttextures.com/patterns/shattered-island.png')]"
-    }
-  },
-  {
-    rank: "SS", anime: "Solo Leveling", title: "Monarca das Sombras", 
-    xpRequired: 1000000, minLevel: 120, minKarma: 20000, 
-    requirements: "Dominar inteiramente sua categoria no Nicho.", benefits: "Exército I.A. (Orquestração ilimitada).", icon: Crown,
-    theme: {
-      wrapper: "bg-slate-900 dark:bg-[#030305] border-indigo-900 dark:border-[#1a103c]",
-      header: "bg-slate-800/50 dark:bg-[#110824]/80",
-      progressBar: "bg-slate-800 dark:bg-[#0d0617]",
-      progressFill: "bg-indigo-500 dark:bg-indigo-500",
-      textPrimary: "text-white dark:text-indigo-50",
-      textSecondary: "text-indigo-400 dark:text-indigo-400",
-      badge: "bg-indigo-900/50 text-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-700 dark:border-indigo-800",
-      aura: "hover:shadow-[0_0_60px_rgba(99,102,241,0.4)]",
-      patternUtils: "opacity-[0.1] bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]"
-    }
-  },
-  {
-    rank: "SSS", anime: "Overlord", title: "Ser Supremo de Nazarick", 
-    xpRequired: 2000000, minLevel: 150, minKarma: 50000, 
-    requirements: "Ascensão completa. Controle de Guilda Nível Max.", benefits: "Sistema VIP + Modificação Estrutural de I.A.", icon: Skull,
-    theme: {
-      wrapper: "bg-black dark:bg-[#000000] border-yellow-800 dark:border-yellow-600/40",
-      header: "bg-amber-900/20 dark:bg-amber-950/30",
-      progressBar: "bg-neutral-900 dark:bg-neutral-900",
-      progressFill: "bg-yellow-500 dark:bg-yellow-500",
-      textPrimary: "text-amber-100 dark:text-amber-100",
-      textSecondary: "text-amber-500 dark:text-amber-600",
-      badge: "bg-amber-950 text-amber-400 border-amber-700/50",
-      aura: "hover:shadow-[0_0_80px_rgba(234,179,8,0.3)]",
-      patternUtils: "opacity-[0.2] bg-[url('https://www.transparenttextures.com/patterns/japanese-sayagata.png')] mix-blend-overlay"
-    }
-  }
+};
+
+type ToneStyle = (typeof toneStyles)[EvolutionTone];
+
+export const YGN_EVOLUTION_TIERS: EvolutionTier[] = [
+  { rank: 'F', title: 'Iniciado do Selo', kanji: '芽', concept: 'Mebae', archetype: 'primeira chama', xpRequired: 0, minLevel: 1, minKarma: 0, requirement: 'Comecar a jornada no YGGNAROK.', benefit: 'Acesso ao painel central e aos rituais basicos.', icon: Flame, tone: 'ember' },
+  { rank: 'E-', title: 'Estrategista Silencioso', kanji: '策', concept: 'Saku', archetype: 'analise inicial', xpRequired: 500, minLevel: 2, minKarma: 20, requirement: 'Concluir o primeiro plano util para um perfil.', benefit: 'Desbloqueia leitura estrategica de tarefas.', icon: BookOpen, tone: 'ash' },
+  { rank: 'E', title: 'Vigia Desperto', kanji: '眼', concept: 'Manako', archetype: 'observacao', xpRequired: 1500, minLevel: 3, minKarma: 50, requirement: 'Registrar aprendizados e evitar repeticao de erros.', benefit: 'Melhor leitura de risco e prioridade.', icon: Eye, tone: 'rose' },
+  { rank: 'E+', title: 'Executor Noturno', kanji: '刃', concept: 'Yaiba', archetype: 'acao rapida', xpRequired: 3000, minLevel: 5, minKarma: 100, requirement: 'Eliminar gargalos pequenos com consistencia.', benefit: 'Acoes rapidas e foco operacional.', icon: Sword, tone: 'rose' },
+  { rank: 'D-', title: 'Linker Digital', kanji: '結', concept: 'Musubi', archetype: 'conexao', xpRequired: 5000, minLevel: 7, minKarma: 150, requirement: 'Conectar perfis, conteudos e metas.', benefit: 'Melhor organizacao de ativos e ideias.', icon: Monitor, tone: 'aqua' },
+  { rank: 'D', title: 'Mago da Ordem', kanji: '律', concept: 'Ritsu', archetype: 'disciplina', xpRequired: 8000, minLevel: 10, minKarma: 200, requirement: 'Manter rotina semanal de criacao.', benefit: 'Fluxos simultaneos com menos atrito.', icon: Sparkles, tone: 'jade' },
+  { rank: 'D+', title: 'Guardiao da Guilda', kanji: '盟', concept: 'Mei', archetype: 'colaboracao', xpRequired: 12000, minLevel: 15, minKarma: 300, requirement: 'Ajudar outro perfil ou membro confiavel.', benefit: 'Bonus de XP por colaboracao real.', icon: Shield, tone: 'ember' },
+  { rank: 'C-', title: 'Respiracao Total', kanji: '水', concept: 'Mizu', archetype: 'ritmo', xpRequired: 18000, minLevel: 20, minKarma: 450, requirement: 'Concluir uma sequencia de conteudos planejada.', benefit: 'Cronograma interno mais confiavel.', icon: Waves, tone: 'aqua' },
+  { rank: 'C', title: 'Alquimista de Ativos', kanji: '錬', concept: 'Ren', archetype: 'transformacao', xpRequired: 25000, minLevel: 25, minKarma: 600, requirement: 'Transformar ideias em ativos reutilizaveis.', benefit: 'Biblioteca de prompts, roteiros e variacoes.', icon: Atom, tone: 'gold' },
+  { rank: 'C+', title: 'Ego de Conversao', kanji: '的', concept: 'Mato', archetype: 'precisao', xpRequired: 35000, minLevel: 30, minKarma: 800, requirement: 'Melhorar metricas de um conteudo anterior.', benefit: 'Analise de conversao e testes por perfil.', icon: Target, tone: 'aqua' },
+  { rank: 'B-', title: 'Explorador Licenciado', kanji: '巡', concept: 'Meguri', archetype: 'descoberta', xpRequired: 50000, minLevel: 35, minKarma: 1000, requirement: 'Mapear um nicho com dados reais.', benefit: 'Radar de oportunidades e lacunas.', icon: Compass, tone: 'jade' },
+  { rank: 'B', title: 'Operador Cromado', kanji: '機', concept: 'Kikai', archetype: 'velocidade', xpRequired: 75000, minLevel: 40, minKarma: 1500, requirement: 'Reduzir tempo de execucao sem cair qualidade.', benefit: 'Orquestracao de etapas e automacoes leves.', icon: Zap, tone: 'violet' },
+  { rank: 'B+', title: 'Cartografo Global', kanji: '海', concept: 'Umi', archetype: 'escala', xpRequired: 100000, minLevel: 50, minKarma: 2000, requirement: 'Atingir marco relevante de alcance acumulado.', benefit: 'Mapa de perfis, campanhas e canais.', icon: Compass, tone: 'aqua' },
+  { rank: 'A-', title: 'Dominio Expandido', kanji: '域', concept: 'Iki', archetype: 'controle', xpRequired: 150000, minLevel: 60, minKarma: 3000, requirement: 'Automatizar uma rotina sem perder revisao humana.', benefit: 'Agentes funcionais com permissoes restritas.', icon: Ghost, tone: 'violet' },
+  { rank: 'A', title: 'Contrato de Impacto', kanji: '契', concept: 'Chigiri', archetype: 'compromisso', xpRequired: 250000, minLevel: 75, minKarma: 5000, requirement: 'Manter qualidade alta em uma campanha inteira.', benefit: 'Execucao em lote com checkpoints.', icon: Flame, tone: 'ember' },
+  { rank: 'A+', title: 'Memoria Eterna', kanji: '永', concept: 'Ei', archetype: 'sabedoria', xpRequired: 400000, minLevel: 90, minKarma: 8000, requirement: 'Construir base de conhecimento reutilizavel.', benefit: 'Contexto historico para decisoes futuras.', icon: Hourglass, tone: 'jade' },
+  { rank: 'S', title: 'Retorno Perfeito', kanji: '還', concept: 'Kaeru', archetype: 'correcao', xpRequired: 600000, minLevel: 100, minKarma: 12000, requirement: 'Recuperar projetos que falharam e documentar causa.', benefit: 'Checkpoints e revisoes de qualidade.', icon: Star, tone: 'violet' },
+  { rank: 'SS', title: 'Monarca de Fluxos', kanji: '王', concept: 'Ou', archetype: 'comando', xpRequired: 1000000, minLevel: 120, minKarma: 20000, requirement: 'Dominar um fluxo completo de criacao a resultado.', benefit: 'Orquestracao ampla de agentes funcionais.', icon: Crown, tone: 'gold' },
+  { rank: 'SSS', title: 'Soberano YGN', kanji: '神', concept: 'Kami', archetype: 'autoridade suprema', xpRequired: 2000000, minLevel: 150, minKarma: 50000, requirement: 'Controle integral, logs confiaveis e governanca ativa.', benefit: 'Edicao estrutural do OS com auditoria e simulacao.', icon: Crown, tone: 'void' },
 ];
 
-export default function Evolution({ user, profile, isDarkMode, activeFragment }: { user: User, profile: Profile, isDarkMode?: boolean, activeFragment?: CreatorFragment }) {
-  // Encontrar o índice atual através do XP (cada 1xp real do bd pode valer 1 ou algo multiplicado dependendo de como definiram, let's treat user.xp as literal xp)
-  // O prompt indica uma cadência de xp requerida
+const getCurrentTierIndex = (user: User) => {
   let currentRankIndex = 0;
-  for (let i = 0; i < RANK_TIERS.length; i++) {
-    if (user.xp >= RANK_TIERS[i].xpRequired) {
+  for (let i = 0; i < YGN_EVOLUTION_TIERS.length; i += 1) {
+    if (user.xp >= YGN_EVOLUTION_TIERS[i].xpRequired) {
       currentRankIndex = i;
     }
   }
 
-  // Se o Momonga está operando o app, ou temos supreme levels mockados, no Dashboard o rank é alterado
   const effectiveRank = getEffectiveRank(user);
-  const foundIndexByRank = RANK_TIERS.findIndex(r => r.rank === effectiveRank);
-  // Se o effectiveRank for forçado para SSS ou algo assim, ele sobreescreve a checagem por xp
-  if (foundIndexByRank > currentRankIndex) {
-    currentRankIndex = foundIndexByRank;
-  }
+  const foundIndexByRank = YGN_EVOLUTION_TIERS.findIndex((tier) => tier.rank === effectiveRank);
 
-  const isSimulation = (user as any).isRealUser === false;
-  const isMomongaAdmin = user.role === NazarickRole.MOMONGA || (user as any).isAdmin === true;
+  return foundIndexByRank > currentRankIndex ? foundIndexByRank : currentRankIndex;
+};
+
+const getProgressToNextTier = (user: User, currentRankIndex: number) => {
+  const currentTier = YGN_EVOLUTION_TIERS[currentRankIndex];
+  const nextTier = YGN_EVOLUTION_TIERS[currentRankIndex + 1];
+
+  if (!nextTier) return 100;
+
+  const range = nextTier.xpRequired - currentTier.xpRequired;
+  const progress = ((user.xp - currentTier.xpRequired) / range) * 100;
+  return Math.max(0, Math.min(100, Math.round(progress)));
+};
+
+export function EvolutionUserCard({
+  user,
+  profile,
+  currentTier,
+  nextTier,
+  progressToNext,
+  isDarkMode,
+}: {
+  user: User;
+  profile: Profile;
+  currentTier: EvolutionTier;
+  nextTier?: EvolutionTier;
+  progressToNext: number;
+  isDarkMode?: boolean;
+}) {
+  const tone = toneStyles[currentTier.tone];
+  const Icon = currentTier.icon;
+  const isAdmin = user.role === NazarickRole.MOMONGA;
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-12 animate-in fade-in duration-500 pb-24 px-4 sm:px-6">
-      <div className={cn("flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8 transition-colors mt-4", isDarkMode ? "border-white/10" : "border-slate-200")}>
-        <div className="flex items-center gap-6">
-          <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl transition-colors", isDarkMode ? "bg-indigo-600 text-white shadow-[0_0_30px_rgba(79,70,229,0.3)]" : "bg-slate-900 text-white shadow-slate-200")}>
-            <Star className="w-8 h-8" />
+    <motion.section
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        'relative overflow-hidden rounded-lg border p-6 md:p-8 bg-gradient-to-br',
+        tone.surface,
+        tone.border,
+        tone.glow,
+        isDarkMode ? 'glass-panel' : 'glass-panel-light'
+      )}
+    >
+      <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-current to-transparent opacity-35" />
+      <div className="absolute right-6 top-6 text-[104px] leading-none font-black opacity-[0.045] select-none">{currentTier.kanji}</div>
+
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8">
+        <div className="flex gap-5">
+          <div className={cn('w-16 h-16 rounded-lg flex items-center justify-center text-white shadow-lg shrink-0', tone.fill)}>
+            <Icon className="w-8 h-8" />
           </div>
-          <div>
-            <h2 className={cn("font-black text-4xl tracking-tighter uppercase transition-colors drop-shadow-sm", isDarkMode ? "text-white" : "text-slate-900")}>Evolução</h2>
-            <p className="text-xs text-slate-400 font-black uppercase tracking-[0.3em] mt-1.5 drop-shadow-sm">
-              Progresso do Domínio de {profile.name}
+          <div className="min-w-0">
+            <p className={cn('text-[10px] font-black uppercase tracking-[0.34em] mb-2', tone.muted)}>YGN Evolution Card</p>
+            <h2 className={cn('text-3xl md:text-5xl font-black uppercase leading-tight', tone.text)}>
+              {profile.name}
+            </h2>
+            <p className={cn('text-sm md:text-base font-bold mt-3 max-w-2xl leading-relaxed', tone.muted)}>
+              {isAdmin ? 'Admin Supremo em governanca do Sistema de Evolucao.' : 'Perfil em progressao dentro do YGGNAROK.'}
             </p>
           </div>
         </div>
-        
-        <div className="flex flex-col gap-4">
-          {isSimulation && (
-            <div className="p-3 rounded-xl border bg-purple-500/10 border-purple-500/30 w-full animate-pulse">
-              <p className="text-[10px] font-black tracking-widest text-purple-400 uppercase">SIMULAÇÃO</p>
-              <p className="text-[11px] font-bold text-white">Marionete de Nazarick</p>
-              <p className="text-[9px] text-purple-300">Dados falsos para teste</p>
+
+        <div className="flex flex-col justify-between gap-6">
+          <div className="grid grid-cols-3 gap-3">
+            <StatPill label="Rank" value={currentTier.rank} tone={tone} />
+            <StatPill label="Level" value={String(user.level || 1)} tone={tone} />
+            <StatPill label="Karma" value={user.karma.toLocaleString()} tone={tone} />
+          </div>
+
+          <div>
+            <div className="flex items-end justify-between gap-4 mb-2">
+              <div>
+                <p className={cn('text-[9px] font-black uppercase tracking-[0.24em]', tone.muted)}>Progresso ao proximo selo</p>
+                <p className={cn('text-sm font-black uppercase mt-1', tone.text)}>
+                  {nextTier ? `${currentTier.rank} -> ${nextTier.rank}` : 'Selo maximo estabilizado'}
+                </p>
+              </div>
+              <span className={cn('text-2xl font-black font-mono', tone.text)}>{progressToNext}%</span>
             </div>
-          )}
-          <div className={cn("p-4 rounded-2xl border flex gap-6 shadow-sm", isDarkMode ? "bg-slate-900/80 border-white/10 backdrop-blur-md" : "bg-white border-slate-200")}>
-             <div>
-               <p className="text-[9px] uppercase font-black tracking-[0.2em] text-slate-500 mb-1">XP Atual</p>
-               <p className={cn("text-2xl font-black font-mono leading-none tracking-tight", isDarkMode ? "text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" : "text-slate-900")}>{user.xp.toLocaleString()}</p>
-             </div>
-             <div className={cn("w-px h-10 my-auto", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
-             <div>
-               <p className="text-[9px] uppercase font-black tracking-[0.2em] text-slate-500 mb-1">Rank Atual</p>
-               <p className={cn("text-2xl font-black leading-none drop-shadow-md", isDarkMode ? "text-indigo-400" : "text-indigo-600")}>{RANK_TIERS[currentRankIndex].rank}</p>
-             </div>
+            <div className="h-3 rounded-full overflow-hidden bg-black/10 dark:bg-white/10 border border-black/5 dark:border-white/10">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressToNext}%` }}
+                transition={{ duration: 1.2, ease: 'easeOut' }}
+                className={cn('h-full rounded-full', tone.fill)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+function StatPill({ label, value, tone }: { label: string; value: string; tone: ToneStyle }) {
+  return (
+    <div className="border border-current/10 bg-white/12 dark:bg-black/16 px-4 py-3 rounded-lg">
+      <p className={cn('text-[8px] font-black uppercase tracking-[0.24em] mb-1', tone.muted)}>{label}</p>
+      <p className={cn('text-xl font-black font-mono leading-none', tone.text)}>{value}</p>
+    </div>
+  );
+}
+
+export function EvolutionRankCard({
+  tier,
+  index,
+  isUnlocked,
+  isCurrent,
+  isNext,
+  progress,
+}: {
+  tier: EvolutionTier;
+  index: number;
+  isUnlocked: boolean;
+  isCurrent: boolean;
+  isNext: boolean;
+  progress: number;
+}) {
+  const tone = toneStyles[tier.tone];
+  const Icon = tier.icon;
+  const stateLabel = isCurrent ? 'Selo atual' : isNext ? 'Proximo selo' : isUnlocked ? 'Desbloqueado' : 'Bloqueado';
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ delay: Math.min(index * 0.025, 0.3), duration: 0.45 }}
+      className={cn(
+        'relative overflow-hidden rounded-lg border min-h-[24rem] bg-gradient-to-br p-5 transition-all duration-500',
+        tone.surface,
+        tone.border,
+        isCurrent ? cn('scale-[1.015]', tone.glow) : 'shadow-sm',
+        !isUnlocked && !isNext && 'opacity-55 grayscale'
+      )}
+      title={`Rank ${tier.rank} - ${tier.title}`}
+    >
+      <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-current to-transparent opacity-25" />
+      <div className="absolute -right-3 top-2 text-[92px] font-black leading-none opacity-[0.045] select-none">{tier.kanji}</div>
+
+      <div className="relative z-10 h-full flex flex-col">
+        <div className="flex justify-between gap-4 mb-6">
+          <div>
+            <p className={cn('text-[10px] font-black uppercase tracking-[0.3em]', tone.muted)}>{tier.concept}</p>
+            <h3 className={cn('text-4xl font-black uppercase mt-2 leading-none', tone.text)}>{tier.rank}</h3>
+          </div>
+          <div className={cn('w-12 h-12 rounded-lg flex items-center justify-center text-white shadow-md', tone.fill)}>
+            <Icon className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mb-5">
+          {isUnlocked || isCurrent ? <Unlock className={cn('w-3.5 h-3.5', tone.muted)} /> : <Lock className={cn('w-3.5 h-3.5', tone.muted)} />}
+          <span className={cn('text-[9px] font-black uppercase tracking-[0.22em]', tone.muted)}>{stateLabel}</span>
+        </div>
+
+        <h4 className={cn('text-xl font-black leading-snug mb-2', tone.text)}>{tier.title}</h4>
+        <p className={cn('text-[11px] font-black uppercase tracking-[0.2em] mb-5', tone.muted)}>{tier.archetype}</p>
+
+        <div className="space-y-4 flex-1">
+          <div>
+            <p className={cn('text-[8px] font-black uppercase tracking-[0.24em] mb-1', tone.muted)}>Requisito</p>
+            <p className={cn('text-xs font-bold leading-relaxed', tone.text)}>{tier.requirement}</p>
+          </div>
+          <div>
+            <p className={cn('text-[8px] font-black uppercase tracking-[0.24em] mb-1', tone.muted)}>Beneficio</p>
+            <p className={cn('text-xs font-bold leading-relaxed', tone.text)}>{tier.benefit}</p>
+          </div>
+        </div>
+
+        <div className="pt-5 mt-5 border-t border-current/10">
+          <div className="flex justify-between items-end mb-2">
+            <p className={cn('text-[8px] font-black uppercase tracking-[0.24em]', tone.muted)}>XP</p>
+            <p className={cn('text-[11px] font-black font-mono', tone.text)}>{progress}%</p>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden bg-black/10 dark:bg-white/10">
+            <motion.div
+              initial={{ width: 0 }}
+              whileInView={{ width: `${progress}%` }}
+              viewport={{ once: true }}
+              transition={{ duration: 1, ease: 'easeOut' }}
+              className={cn('h-full rounded-full', tone.fill)}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            <MiniMeta label="Lvl" value={tier.minLevel.toLocaleString()} tone={tone} />
+            <MiniMeta label="Karma" value={tier.minKarma.toLocaleString()} tone={tone} />
+            <MiniMeta label="XP" value={tier.xpRequired.toLocaleString()} tone={tone} />
+          </div>
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+function MiniMeta({ label, value, tone }: { label: string; value: string; tone: ToneStyle }) {
+  return (
+    <div>
+      <p className={cn('text-[7px] font-black uppercase tracking-[0.18em]', tone.muted)}>{label}</p>
+      <p className={cn('text-[10px] font-black font-mono truncate', tone.text)}>{value}</p>
+    </div>
+  );
+}
+
+export default function Evolution({ user, profile, isDarkMode, activeFragment }: { user: User, profile: Profile, isDarkMode?: boolean, activeFragment?: CreatorFragment }) {
+  const currentRankIndex = getCurrentTierIndex(user);
+  const currentTier = YGN_EVOLUTION_TIERS[currentRankIndex];
+  const nextTier = YGN_EVOLUTION_TIERS[currentRankIndex + 1];
+  const progressToNext = getProgressToNextTier(user, currentRankIndex);
+  const isSimulation = (user as any).isRealUser === false;
+  const isAdmin = user.role === NazarickRole.MOMONGA || (user as any).isAdmin === true;
+
+  return (
+    <div className="max-w-[1400px] mx-auto space-y-10 animate-in fade-in duration-500 pb-24 px-4 sm:px-6">
+      <div className={cn('flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8 transition-colors mt-4', isDarkMode ? 'border-white/10' : 'border-slate-200')}>
+        <div className="flex items-center gap-5">
+          <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-700 text-white shadow-xl">
+            <Star className="w-7 h-7" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.34em] text-amber-500 mb-2">YGGNAROK / YGN</p>
+            <h2 className={cn('font-black text-4xl uppercase transition-colors', isDarkMode ? 'text-white' : 'text-slate-900')}>Sistema de Evolucao</h2>
+            <p className="text-xs text-slate-400 font-black uppercase tracking-[0.22em] mt-2">
+              Cards centrais de XP, rank, level e governanca
+            </p>
+          </div>
+        </div>
+
+        <div className={cn('rounded-lg border px-4 py-3 transition-colors', isDarkMode ? 'glass-panel border-white/10' : 'glass-panel-light border-slate-200')}>
+          <p className="text-[9px] uppercase font-black tracking-[0.24em] text-slate-500 mb-1">Contexto ativo</p>
+          <div className="flex items-center gap-3">
+            <span className={cn('text-sm font-black uppercase', isDarkMode ? 'text-white' : 'text-slate-900')}>{activeFragment || CreatorFragment.MOMONGA}</span>
+            <span className="w-1 h-1 rounded-full bg-slate-400" />
+            <span className="text-xs font-bold text-slate-500">{isAdmin ? 'Admin' : 'Usuario'}</span>
+            {isSimulation && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-purple-400" />
+                <span className="text-xs font-bold text-purple-400">Simulacao</span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {!isSimulation && isMomongaAdmin ? (
-        <AdminSupremeDashboardCard user={user} isDarkMode={isDarkMode} activeFragment={activeFragment} />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {RANK_TIERS.map((tier, index) => {
-          const isUnlocked = index <= currentRankIndex;
-          const isNext = index === currentRankIndex + 1;
-          const isCurrent = index === currentRankIndex;
-          
-          let statusLabel = isUnlocked ? 'Desbloqueado' : 'Bloqueado';
-          if (isCurrent) statusLabel = 'Aura Atual';
-          if (isNext) statusLabel = 'Em Progresso';
+      <EvolutionUserCard
+        user={user}
+        profile={profile}
+        currentTier={currentTier}
+        nextTier={nextTier}
+        progressToNext={progressToNext}
+        isDarkMode={isDarkMode}
+      />
 
-          let progress = 0;
-          if (isUnlocked) progress = 100;
-          else if (isNext) {
-            const prevXP = RANK_TIERS[index - 1].xpRequired;
-            const range = tier.xpRequired - prevXP;
-            // mock the progression between ranks using user XP relative to previous
-            const currentExpGap = Math.max(0, user.xp - prevXP);
-            progress = Math.min(100, Math.round((currentExpGap / range) * 100));
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-[10px] uppercase font-black tracking-[0.34em] text-slate-500 mb-2">Escala reutilizavel</p>
+          <h3 className={cn('text-2xl font-black uppercase', isDarkMode ? 'text-white' : 'text-slate-900')}>Cards de Rank YGN</h3>
+        </div>
+        <p className="hidden md:block text-xs font-bold text-slate-500 max-w-sm text-right">
+          Estes cards sao a base visual do Sistema de Evolucao. Agentes/IAs continuam funcionais e sem visual proprio neste ciclo.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {YGN_EVOLUTION_TIERS.map((tier, index) => {
+          const isUnlocked = index <= currentRankIndex;
+          const isCurrent = index === currentRankIndex;
+          const isNext = index === currentRankIndex + 1;
+          let progress = isUnlocked ? 100 : 0;
+
+          if (isNext) {
+            const previousTier = YGN_EVOLUTION_TIERS[index - 1];
+            const range = tier.xpRequired - previousTier.xpRequired;
+            progress = Math.min(100, Math.round(Math.max(0, user.xp - previousTier.xpRequired) / range * 100));
           }
 
-          const { theme } = tier;
-          const Icon = tier.icon;
-
           return (
-             <motion.div
+            <EvolutionRankCard
               key={tier.rank}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              title={`Rank ${tier.rank} - ${tier.anime}`}
-              className={cn(
-                "relative group rounded-[32px] overflow-hidden border transition-all duration-700 h-[28rem] flex flex-col cursor-crosshair transform",
-                theme.wrapper,
-                !isUnlocked && !isNext ? "opacity-50 grayscale hover:grayscale-[0.5] hover:opacity-80 border-transparent shadow-none" : "shadow-xl border-opacity-100",
-                isUnlocked && theme.aura,
-                isCurrent && "border-opacity-100 shadow-[0_0_50px_rgba(0,0,0,0.5)] scale-[1.02] z-10"
-              )}
-            >
-              <div className={cn("absolute inset-0 pointer-events-none z-0 transition-opacity duration-1000", theme.patternUtils, !isUnlocked ? "opacity-10" : "")} />
-              
-              <div className={cn("p-6 border-b relative z-10 flex flex-col gap-4 backdrop-blur-sm transition-colors duration-500", theme.header, (isDarkMode ? "border-white/10" : "border-black/5"))}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className={cn("text-4xl font-black uppercase tracking-tighter leading-none mb-1 drop-shadow-sm", theme.textPrimary)}>
-                      {tier.rank}
-                    </h3>
-                    <p className={cn("text-[10px] font-black uppercase tracking-[0.25em] drop-shadow-md", theme.textSecondary)}>
-                      {tier.anime}
-                    </p>
-                  </div>
-                  <div className={cn("w-14 h-14 rounded-[1.25rem] flex items-center justify-center border shadow-inner backdrop-blur-md", theme.badge)}>
-                    <Icon className="w-7 h-7 drop-shadow-md" />
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 mt-2">
-                  {isUnlocked ? (
-                    <Unlock className={cn("w-3 h-3 drop-shadow-md", theme.textSecondary)} />
-                  ) : (
-                    <Lock className={cn("w-3 h-3", theme.textSecondary, "opacity-50")} />
-                  )}
-                  <span className={cn("text-[8.5px] font-black uppercase tracking-[0.15em]", theme.textSecondary, !isUnlocked && "opacity-50")}>
-                    {statusLabel}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-6 flex-1 flex flex-col justify-between relative z-10">
-                <div className="group-hover:-translate-y-1 transition-transform duration-500">
-                  <h4 className={cn("font-black text-xl mb-6 tracking-tight leading-snug drop-shadow-md", theme.textPrimary)}>
-                    {tier.title}
-                  </h4>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-black/5 dark:border-white/5">
-                      <p className={cn("text-[7px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-60", theme.textPrimary)}>Requisito de Desbloqueio</p>
-                      <p className={cn("text-[11px] font-bold leading-relaxed", theme.textPrimary, "opacity-90")}>
-                        {tier.requirements}
-                      </p>
-                    </div>
-                    <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-black/5 dark:border-white/5">
-                      <p className={cn("text-[7px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-60", theme.textPrimary)}>Benefício</p>
-                      <p className={cn("text-[11px] font-black leading-relaxed drop-shadow-sm", theme.textPrimary)}>
-                        {tier.benefits}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-4">
-                   <div className="flex justify-between items-end mb-2">
-                     <p className={cn("text-[8px] font-black uppercase tracking-[0.2em] opacity-60", theme.textPrimary)}>Progresso de XP</p>
-                     <p className={cn("text-[11px] font-black font-mono drop-shadow-md", theme.textPrimary)}>
-                       {progress}%
-                     </p>
-                   </div>
-                   
-                   <div className={cn("h-2 w-full rounded-full overflow-hidden border border-black/10 dark:border-white/10 shadow-inner", theme.progressBar)}>
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${progress}%` }}
-                        transition={{ duration: 1.5, ease: "easeOut" }}
-                        className={cn("h-full relative", theme.progressFill)}
-                      >
-                         {progress > 0 && progress < 100 && (
-                            <div className="absolute inset-0 bg-white/20 w-full animate-pulse" />
-                         )}
-                      </motion.div>
-                   </div>
-
-                   <div className="flex justify-between items-center mt-4">
-                      <div className="flex flex-col gap-0.5">
-                        <span className={cn("text-[7px] font-black uppercase tracking-[0.2em] opacity-50", theme.textPrimary)}>Lvl Mín</span>
-                        <span className={cn("text-[10px] font-bold font-mono", theme.textPrimary)}>{tier.minLevel}</span>
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <span className={cn("text-[7px] font-black uppercase tracking-[0.2em] opacity-50", theme.textPrimary)}>Karma</span>
-                        <span className={cn("text-[10px] font-bold font-mono", theme.textPrimary)}>{tier.minKarma.toLocaleString()}</span>
-                      </div>
-                      <div className="flex flex-col gap-0.5 text-right">
-                        <span className={cn("text-[7px] font-black uppercase tracking-[0.2em] opacity-50", theme.textPrimary)}>XP Alvo</span>
-                        <span className={cn("text-[10px] font-black font-mono shadow-sm", theme.textPrimary)}>{(tier.xpRequired / 1000).toFixed(tier.xpRequired < 1000 ? 1 : 0)}k</span>
-                      </div>
-                   </div>
-                </div>
-              </div>
-
-              {isUnlocked && (
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-current to-transparent opacity-0 group-hover:opacity-[0.03] dark:group-hover:opacity-[0.05] transition-opacity duration-700 pointer-events-none" style={{ color: 'inherit' }} />
-              )}
-            </motion.div>
+              tier={tier}
+              index={index}
+              isUnlocked={isUnlocked}
+              isCurrent={isCurrent}
+              isNext={isNext}
+              progress={progress}
+            />
           );
         })}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

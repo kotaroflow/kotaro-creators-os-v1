@@ -34,7 +34,7 @@ export const backendOptions: BackendOption[] = [
     name: "Firebase",
     status: "current",
     capabilities: ["auth", "database", "realtime", "storage", "functions"],
-    bestFor: ["prototipo rapido", "login Google", "sincronizacao simples", "ecossistema Google"],
+    bestFor: ["prototipo rapido", "dados legados", "sincronizacao simples", "ecossistema Google"],
     tradeoffs: [
       "custo pode crescer com leitura/escrita/storage",
       "menos portavel que Postgres",
