@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -177,15 +177,15 @@ export default function App() {
 
     return [
       { id: 'dashboard', label: 'Painel Central', icon: LayoutDashboard, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS, CreatorFragment.KOTARO, CreatorFragment.MOMONGA] },
-      { id: 'creation', label: 'CriaÃ§Ã£o I.A.', icon: FileAudio, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO] },
-      { id: 'strategy', label: 'EstratÃ©gia Profunda', icon: Target, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS, CreatorFragment.KOTARO, CreatorFragment.MOMONGA] },
+      { id: 'creation', label: 'Criação I.A.', icon: FileAudio, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO] },
+      { id: 'strategy', label: 'Estratégia Profunda', icon: Target, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS, CreatorFragment.KOTARO, CreatorFragment.MOMONGA] },
       { id: 'campaigns', label: 'Arco de Campanhas', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], roleReq: isHighRole, fragments: [CreatorFragment.MATHEUS] },
       { id: 'links', label: 'Forja de Links', icon: Share2, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS] },
       { id: 'scheduling', label: 'Cronograma', icon: Calendar, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO, CreatorFragment.MATHEUS] },
-      { id: 'reports', label: 'RelatÃ³rios de Guerra', icon: BarChart3, modes: [OperationalMode.HARD, OperationalMode.SUPREME], rankReq: isHighRank || isHighRole, fragments: [CreatorFragment.MATHEUS] },
+      { id: 'reports', label: 'Relatórios de Guerra', icon: BarChart3, modes: [OperationalMode.HARD, OperationalMode.SUPREME], rankReq: isHighRank || isHighRole, fragments: [CreatorFragment.MATHEUS] },
       { id: 'library', label: 'Biblioteca de Ativos', icon: LibraryIcon, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO] },
       { id: 'users', label: 'Subordinados', icon: Users, modes: [OperationalMode.SUPREME], roleReq: isSupreme, fragments: [CreatorFragment.MOMONGA] },
-      { id: 'evolution', label: 'EvoluÃ§Ã£o de Escala', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MOMONGA] },
+      { id: 'evolution', label: 'Evolução de Escala', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MOMONGA] },
       { id: 'finance', label: 'Cofre Real', icon: Settings, modes: [OperationalMode.SUPREME], roleReq: isSupreme, fragments: [CreatorFragment.MATHEUS] },
       ...(isSupreme ? [{ id: 'admin', label: 'Tumba de Nazarick', icon: Shield, modes: [OperationalMode.SUPREME], fragments: [CreatorFragment.MOMONGA] }] : []),
     ].filter(item => {
@@ -402,7 +402,7 @@ export default function App() {
                     </div>
                     <div className="text-right">
                        <span className={cn("text-[7px] font-black uppercase tracking-widest block mb-0.5", isDarkMode ? "text-slate-500" : "text-slate-400")}>Status</span>
-                       <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest block leading-none">ESTÃVEL</span>
+                       <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest block leading-none">ESTÁVEL</span>
                     </div>
                   </div>
                 </div>
@@ -467,7 +467,7 @@ export default function App() {
                           {finalUser?.name?.charAt(0) || 'U'}
                         </div>
                         <div>
-                           <h4 className={cn("text-sm font-black uppercase tracking-tighter", isDarkMode ? "text-white" : "text-slate-900")}>{finalUser?.name || 'UsuÃ¡rio'}</h4>
+                           <h4 className={cn("text-sm font-black uppercase tracking-tighter", isDarkMode ? "text-white" : "text-slate-900")}>{finalUser?.name || 'Usuário'}</h4>
                            <p className={cn("text-[8px] font-black uppercase tracking-widest mt-0.5", layoutTheme.accentText)}>{finalUser?.role}</p>
                         </div>
                      </div>
@@ -526,7 +526,7 @@ export default function App() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 relative">
                     <h1 className={cn("text-xl font-black uppercase tracking-tighter flex items-center gap-2", isDarkMode ? "text-white" : "text-slate-900")}>
-                      {finalUser?.name?.replace(/^adm\s+/i, '').split(' ')[0] || 'UsuÃ¡rio'}
+                      {finalUser?.name?.replace(/^adm\s+/i, '').split(' ')[0] || 'Usuário'}
                     </h1>
                     <div className="flex items-center gap-1.5 cursor-help">
                       <span className={cn("text-[8px] text-white px-2 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm", layoutTheme.accentBg)}>{finalUser?.operationalMode}</span>
@@ -538,7 +538,7 @@ export default function App() {
                     "flex items-center gap-2 px-3 py-1 rounded-lg border shadow-sm transition-colors duration-500",
                     isDarkMode ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-200"
                   )}>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">NÃ­vel {finalUser?.level || 1}</span>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Nível {finalUser?.level || 1}</span>
                   </div>
                   
                   {/* Comando Supremo - Fragmentos e Simulador */}
@@ -550,7 +550,7 @@ export default function App() {
                     )}>
                       {/* Badge Momonga Effect */}
                       <div className={cn("absolute -top-1.5 -left-1.5 w-4 h-4 rounded-md border flex items-center justify-center shadow-lg rotate-12 z-10", layoutTheme.accentBg, isDarkMode ? "border-white/10" : "border-white/20")}>
-                        <span className="text-[10px] text-white font-overlord font-black -rotate-12 leading-none">âˆž</span>
+                        <span className="text-[10px] text-white font-overlord font-black -rotate-12 leading-none">∞</span>
                       </div>
 
                        {/* Fragmento Launcher */}
@@ -626,7 +626,7 @@ export default function App() {
                     onClick={() => setShowPermissions(true)}
                     className={cn("flex items-center gap-2 px-4 py-2 text-white rounded-xl text-[10px] font-black transition-all uppercase tracking-widest", layoutTheme.accentBg, layoutTheme.shadowGlow)}
                    >
-                     <Shield className="w-3.5 h-3.5" /> GestÃ£o
+                     <Shield className="w-3.5 h-3.5" /> Gestão
                    </button>
                  )}
                  <div className="h-8 w-px bg-slate-500/20 mx-2"></div>
@@ -662,13 +662,13 @@ export default function App() {
                         <Shield className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-black tracking-widest text-white/90 uppercase mb-0.5">MODO DE SIMULAÃ‡ÃƒO ATIVO â€” AMBIENTE 100% SIMULADO</p>
+                        <p className="text-[10px] font-black tracking-widest text-white/90 uppercase mb-0.5">MODO DE SIMULAÇÃO ATIVO — AMBIENTE 100% SIMULADO</p>
                         <div className="flex items-center gap-2 text-xs font-medium text-white shadow-sm">
                           <span className={layoutTheme.accentText}>{finalUser?.role}</span>
                           <span className="w-1 h-1 rounded-full bg-white/40" />
                           <span>Rank {finalUser?.rank || 'F'}</span>
                           <span className="w-1 h-1 rounded-full bg-white/40" />
-                          <span>Lv {finalUser?.level === Infinity ? 'âˆž' : finalUser?.level || 1}</span>
+                          <span>Lv {finalUser?.level === Infinity ? '∞' : finalUser?.level || 1}</span>
                           <span className="w-1 h-1 rounded-full bg-white/40" />
                           <span>{finalUser?.operationalMode}</span>
                         </div>
@@ -677,25 +677,25 @@ export default function App() {
                      <div className="flex items-center gap-2">
                        <button 
                          onClick={() => {
-                           alert('RelatÃ³rio da simulaÃ§Ã£o gerado e salvo nos arquivos locais.');
+                           alert('Relatório da simulação gerado e salvo nos arquivos locais.');
                          }}
                          className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/90 text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10"
                        >
-                         Salvar RelatÃ³rio
+                         Salvar Relatório
                        </button>
                        <button 
                          onClick={() => {
-                           alert('MudanÃ§as enviadas para a fila de aprovaÃ§Ã£o central.');
+                           alert('Mudanças enviadas para a fila de aprovação central.');
                            setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
                          }}
                          className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/90 text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10"
                        >
-                         Enviar P/ AprovaÃ§Ã£o
+                         Enviar P/ Aprovação
                        </button>
                        {user?.role === NazarickRole.MOMONGA && (
                          <button 
                            onClick={async () => {
-                             if (confirm('ATENÃ‡ÃƒO: VocÃª estÃ¡ prestes a aplicar as mudanÃ§as do ambiente de simulaÃ§Ã£o ao SUPREMO ESTADO REAL do sistema. Esta aÃ§Ã£o Ã© irreversÃ­vel. Prosseguir?')) {
+                             if (confirm('ATENÇÃO: Você está prestes a aplicar as mudanças do ambiente de simulação ao SUPREMO ESTADO REAL do sistema. Esta ação é irreversível. Prosseguir?')) {
                                if (simulationState.marioneteNazarick && user?.uid) {
                                  const confirmUpdate = {
                                     ...simulationState.marioneteNazarick
@@ -707,7 +707,7 @@ export default function App() {
                                   } else {
                                     await updateDoc(doc(db, 'users', user.uid), confirmUpdate);
                                   }
-                                 alert('AlteraÃ§Ãµes aplicadas ao estado real do OS.');
+                                 alert('Alterações aplicadas ao estado real do OS.');
                                  setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
                                }
                              }
@@ -721,7 +721,7 @@ export default function App() {
                          onClick={openSupremeSimulator}
                          className={cn("px-4 py-1.5 rounded-lg text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm ml-2", layoutTheme.accentBg, layoutTheme.shadowGlow)}
                        >
-                         Ajustar SimulaÃ§Ã£o
+                         Ajustar Simulação
                        </button>
                        <button 
                          onClick={() => setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }))}
@@ -781,8 +781,8 @@ export default function App() {
                       <div className={cn("w-20 h-20 rounded-full flex items-center justify-center mb-6", layoutTheme.bgDim)}>
                         <Layout className={cn("w-10 h-10 opacity-40", layoutTheme.accentText)} />
                       </div>
-                      <h3 className={cn("font-bold text-2xl tracking-tight mb-2 uppercase", isDarkMode ? "text-white" : "text-slate-800")}>Interface em ManutenÃ§Ã£o</h3>
-                      <p className="text-sm text-slate-500 italic max-w-sm text-center font-medium">Os artesÃ£os de Nazarick estÃ£o calibrando este setor. DisponÃ­vel em breve no CREA.OS.</p>
+                      <h3 className={cn("font-bold text-2xl tracking-tight mb-2 uppercase", isDarkMode ? "text-white" : "text-slate-800")}>Interface em Manutenção</h3>
+                      <p className="text-sm text-slate-500 italic max-w-sm text-center font-medium">Os artesãos de Nazarick estão calibrando este setor. Disponível em breve no CREA.OS.</p>
                     </div>
                   )}
                 </motion.div>
