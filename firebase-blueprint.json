@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "xp": { "type": "number" },
+        "level": { "type": "number" },
+        "rank": { "type": "string" },
+        "karma": { "type": "number" },
+        "operationalMode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "A multi-tenant profile/business unit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "niche": { "type": "string" },
+        "objective": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "socialAccounts": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId"]
+    },
+    "Content": {
+      "title": "Content",
+      "description": "Content asset generated or stored",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "profileId": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "script": { "type": "string" },
+        "aiPrompt": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "profileId", "title", "status"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Main business profiles"
+    },
+    "profiles/{profileId}/access/{userId}": {
+      "schema": { "type": "object", "properties": { "userId": { "type": "string" }, "profileId": { "type": "string" }, "accessLevel": { "type": "string" } } },
+      "description": "Access control for profiles"
+    },
+    "profiles/{profileId}/contents/{contentId}": {
+      "schema": "Content",
+      "description": "Content assets"
+    }
+  }
+}

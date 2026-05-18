@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isEmailVerified() { return request.auth.token.email_verified == true; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function hasProfileAccess(profileId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(profileId)/access/$(request.auth.uid));
+    }
+
+    function isProfileAdmin(profileId) {
+      return isSignedIn() && get(/databases/$(database)/documents/profiles/$(profileId)/access/$(request.auth.uid)).data.accessLevel == 'Admin';
+    }
+
+    // Entity Validations
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid == request.auth.uid &&
+             data.email == request.auth.token.email &&
+             data.role is string && data.role.size() <= 50;
+    }
+
+    function isValidProfile(data) {
+      return data.keys().hasAll(['id', 'name', 'ownerId']) &&
+             data.id is string && data.id.size() <= 64 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidContent(data) {
+      return data.keys().hasAll(['id', 'profileId', 'title', 'status']) &&
+             data.id is string && data.status in ['Draft', 'Review', 'Approved', 'Scheduled', 'Published'];
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidUser(incoming());
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin()) && 
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'operationalMode', 'updatedAt', 'xp', 'level', 'rank', 'karma', 'role', 'levelLimitBreak']);
+    }
+
+    match /profiles/{profileId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidProfile(incoming());
+      allow update: if isSignedIn() && isProfileAdmin(profileId);
+      allow delete: if isSignedIn() && isProfileAdmin(profileId);
+
+      match /access/{userId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (isProfileAdmin(profileId) || request.auth.uid == userId);
+      }
+
+      match /contents/{contentId} {
+        allow read: if hasProfileAccess(profileId) || isAdmin();
+        allow create: if (hasProfileAccess(profileId) || isAdmin()) && isValidContent(incoming());
+        allow update: if (hasProfileAccess(profileId) || isAdmin()) && isValidContent(incoming());
+        allow delete: if isProfileAdmin(profileId) || isAdmin();
+      }
+
+      match /campaigns/{campaignId} {
+        allow read, write: if hasProfileAccess(profileId) || isAdmin();
+      }
+      
+      match /library/{itemId} {
+        allow read, write: if hasProfileAccess(profileId) || isAdmin();
+      }
+    }
+
+    match /users/{userId}/orders/{orderId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAdmin();
+    }
+
+    match /world_items/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+    }
+  }
+}
