@@ -1,11 +1,12 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, collection, query, where, updateDoc } from 'firebase/firestore';
+import { flushSync } from 'react-dom';
+import { signOut } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { User, Profile, NazarickRole, OperationalMode, getEffectiveRank, CreatorFragment, SimulationState } from './types';
 import { Layout, LogOut, Shield, User as UserIcon, LayoutDashboard, Target, Share2, Library as LibraryIcon, BarChart3, Users, Settings, TrendingUp, Plus, Search, Trash2, Calendar, FileAudio, Menu, LayoutGrid, Layers } from 'lucide-react';
@@ -24,6 +25,7 @@ import Evolution from './components/evolution/Evolution';
 import Library from './components/library/Library';
 import Strategy from './components/strategy/Strategy';
 import Scheduling from './components/scheduling/Scheduling';
+import YggnarokTransition, { YGGNAROK_TOTAL_DURATION, YggnarokContext, YggnarokMode } from './components/transitions/YggnarokTransition';
 
 import SupremeSimulator from './components/admin/SupremeSimulator';
 import FragmentSelector from './components/admin/FragmentSelector';
@@ -39,83 +41,128 @@ export default function App() {
   const [activeFragment, setActiveFragment] = useState<CreatorFragment>(CreatorFragment.MOMONGA);
   const [showFragmentSelector, setShowFragmentSelector] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [showPermissions, setShowPermissions] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isUserDetailsVisible, setIsUserDetailsVisible] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [view, setView] = useState<'profiles' | 'dashboard' | 'creation' | 'strategy' | 'campaigns' | 'links' | 'scheduling' | 'reports' | 'library' | 'users' | 'evolution' | 'finance' | 'admin'>('profiles');
-  const [isIntroActive, setIsIntroActive] = useState(false);
+  const [yggnarok, setYggnarok] = useState<{ active: boolean; mode: YggnarokMode; roleName?: string; context?: YggnarokContext; runId: number }>({ active: false, mode: 'default', context: 'system', runId: 0 });
+  const yggnarokTimersRef = React.useRef<{ done?: number }>({});
   
   const finalUser = user ? (simulationState.isActive ? { ...user, ...(simulationState.marioneteNazarick || {}) } as User : user) : null;
   const currentFragment = simulationState.isActive ? simulationState.simulatedFragment : activeFragment;
   const layoutTheme = getLayoutTheme(currentFragment, isDarkMode);
   const effectiveRank = getEffectiveRank(finalUser);
 
+  const fragmentToYggnarokMode = (fragment: CreatorFragment | null | undefined): YggnarokMode => {
+    switch (fragment) {
+      case CreatorFragment.MATHEUS:
+        return 'matheus';
+      case CreatorFragment.KOTARO:
+        return 'kotaro';
+      case CreatorFragment.MOMONGA:
+        return 'momonga';
+      default:
+        return 'default';
+    }
+  };
+
+  const startYggnarok = (
+    request: YggnarokMode | { mode: YggnarokMode; roleName?: string; context?: YggnarokContext },
+    onMidpoint?: () => void
+  ) => {
+    const nextTransition = typeof request === 'string' ? { mode: request, context: 'fragment' as YggnarokContext } : request;
+    window.clearTimeout(yggnarokTimersRef.current.done);
+    if (onMidpoint) onMidpoint();
+    setYggnarok((current) => ({ active: true, runId: current.runId + 1, ...nextTransition }));
+    yggnarokTimersRef.current.done = window.setTimeout(() => {
+      setYggnarok((current) => ({ ...current, active: false }));
+    }, YGGNAROK_TOTAL_DURATION);
+  };
+
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        const userRef = doc(db, 'users', fbUser.uid);
-        const unsubUser = onSnapshot(userRef, async (docSnap) => {
-          if (docSnap.exists()) {
-            const userData = docSnap.data() as User;
-            // Force admin role for the specified email
-            if (fbUser.email === 'naoteemteresa@gmail.com' && userData.role !== NazarickRole.MOMONGA) {
-              await updateDoc(userRef, { role: NazarickRole.MOMONGA });
-            }
-            setUser(userData);
-          } else {
-            // Create default user profile
-            const isInitialAdmin = fbUser.email === 'naoteemteresa@gmail.com';
-            const newUser: User = {
-              uid: fbUser.uid,
-              name: fbUser.displayName || 'Usuário',
-              email: fbUser.email || '',
-              role: isInitialAdmin ? NazarickRole.MOMONGA : NazarickRole.PLEIADES,
-              xp: 0,
-              level: 1,
-              rank: 'F',
-              karma: 0,
-              operationalMode: OperationalMode.NORMAL,
-              createdAt: new Date().toISOString(),
-              tags: []
-            };
-            await setDoc(userRef, newUser);
-            setUser(newUser);
-          }
-          setLoading(false);
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, `usuários/${fbUser.uid}`);
-          setLoading(false);
-        });
-        return unsubUser;
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
+    return () => {
+      window.clearTimeout(yggnarokTimersRef.current.done);
+    };
+  }, []);
+
+  const roleTransition = (roleName?: string) => ({
+    mode: roleName ? 'role' as YggnarokMode : fragmentToYggnarokMode(currentFragment),
+    roleName,
+    context: roleName ? 'role' as YggnarokContext : 'fragment' as YggnarokContext
+  });
+
+  const openSupremeSimulator = (event?: React.MouseEvent<HTMLElement>) => {
+    event?.stopPropagation();
+    flushSync(() => {
+      setShowSupremeSimulator(true);
     });
-    return unsub;
+  };
+
+  const createPresentationUser = (): User => ({
+    uid: 'presentation-user',
+    name: 'Apresentacao Kotaro',
+    email: 'demo@kotaro.local',
+    role: NazarickRole.MOMONGA,
+    xp: 999,
+    level: 99,
+    rank: 'SSS',
+    karma: 100,
+    operationalMode: OperationalMode.SUPREME,
+    createdAt: new Date().toISOString(),
+    tags: ['ainz ooal gown']
+  });
+
+  const handlePresentationLogin = () => {
+    const demoUser = createPresentationUser();
+    localStorage.setItem('kotaro.auth.user', JSON.stringify(demoUser));
+    flushSync(() => {
+      setUser(demoUser);
+      setAuthError('');
+      setLoading(false);
+      setView('profiles');
+    });
+    startYggnarok({ mode: 'role', roleName: demoUser.role, context: 'role' });
+  };
+
+  const handleLogout = async () => {
+    localStorage.removeItem('kotaro.auth.user');
+    setUser(null);
+    setActiveProfile(null);
+    setView('profiles');
+    setLoading(false);
+    await signOut(auth).catch(() => undefined);
+  };
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('kotaro.auth.user');
+
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser) as User);
+      } catch {
+        localStorage.removeItem('kotaro.auth.user');
+      }
+    }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     document.body.className = layoutTheme.bgMain + " transition-colors duration-1000";
   }, [layoutTheme.bgMain]);
 
+
   const navigateTo = (newView: typeof view, profile?: Profile) => {
     if (profile) {
-      setActiveProfile(profile);
-      setIsIntroActive(true);
-      setIsUserDetailsVisible(false); // Close details on navigation
-      
-      // The veil covers the screen faster
-      setTimeout(() => {
+      flushSync(() => {
+        setActiveProfile(profile);
+        setIsUserDetailsVisible(false); // Close details on navigation
         setView(newView);
-      }, 1400); 
-
-      // End intro state after animation completes fully
-      setTimeout(() => {
-        setIsIntroActive(false);
-      }, 1800); 
+      });
+      startYggnarok(roleTransition(finalUser?.role || user?.role));
     } else {
       setView(newView);
     }
@@ -130,15 +177,15 @@ export default function App() {
 
     return [
       { id: 'dashboard', label: 'Painel Central', icon: LayoutDashboard, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS, CreatorFragment.KOTARO, CreatorFragment.MOMONGA] },
-      { id: 'creation', label: 'Criação I.A.', icon: FileAudio, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO] },
-      { id: 'strategy', label: 'Estratégia Profunda', icon: Target, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS, CreatorFragment.KOTARO, CreatorFragment.MOMONGA] },
+      { id: 'creation', label: 'CriaÃ§Ã£o I.A.', icon: FileAudio, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO] },
+      { id: 'strategy', label: 'EstratÃ©gia Profunda', icon: Target, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS, CreatorFragment.KOTARO, CreatorFragment.MOMONGA] },
       { id: 'campaigns', label: 'Arco de Campanhas', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], roleReq: isHighRole, fragments: [CreatorFragment.MATHEUS] },
       { id: 'links', label: 'Forja de Links', icon: Share2, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS] },
       { id: 'scheduling', label: 'Cronograma', icon: Calendar, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO, CreatorFragment.MATHEUS] },
-      { id: 'reports', label: 'Relatórios de Guerra', icon: BarChart3, modes: [OperationalMode.HARD, OperationalMode.SUPREME], rankReq: isHighRank || isHighRole, fragments: [CreatorFragment.MATHEUS] },
+      { id: 'reports', label: 'RelatÃ³rios de Guerra', icon: BarChart3, modes: [OperationalMode.HARD, OperationalMode.SUPREME], rankReq: isHighRank || isHighRole, fragments: [CreatorFragment.MATHEUS] },
       { id: 'library', label: 'Biblioteca de Ativos', icon: LibraryIcon, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO] },
       { id: 'users', label: 'Subordinados', icon: Users, modes: [OperationalMode.SUPREME], roleReq: isSupreme, fragments: [CreatorFragment.MOMONGA] },
-      { id: 'evolution', label: 'Evolução de Escala', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MOMONGA] },
+      { id: 'evolution', label: 'EvoluÃ§Ã£o de Escala', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MOMONGA] },
       { id: 'finance', label: 'Cofre Real', icon: Settings, modes: [OperationalMode.SUPREME], roleReq: isSupreme, fragments: [CreatorFragment.MATHEUS] },
       ...(isSupreme ? [{ id: 'admin', label: 'Tumba de Nazarick', icon: Shield, modes: [OperationalMode.SUPREME], fragments: [CreatorFragment.MOMONGA] }] : []),
     ].filter(item => {
@@ -160,9 +207,25 @@ export default function App() {
     );
   }
 
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
+        <div className="max-w-lg w-full border border-red-500/20 bg-red-950/20 rounded-2xl p-8 text-center">
+          <h1 className="text-2xl font-black mb-3">Falha ao sincronizar dados</h1>
+          <p className="text-sm text-red-100/80 mb-6 leading-relaxed">{authError}</p>
+          <button
+            onClick={handleLogout}
+            className="px-5 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-xs font-black uppercase tracking-widest transition-colors"
+          >
+            Sair e tentar de novo
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-    <AnimatePresence mode="wait">
       {!user ? (
         <motion.div
           key="login"
@@ -172,7 +235,7 @@ export default function App() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="contents"
         >
-          <Login onLogin={() => {}} />
+          <Login onLogin={handlePresentationLogin} />
         </motion.div>
       ) : (view === 'profiles' || !activeProfile) ? (
         <motion.div
@@ -186,7 +249,7 @@ export default function App() {
           <ProfileSelector 
             user={finalUser} 
             onSelect={(p) => navigateTo('dashboard', p)} 
-            onLogout={() => signOut(auth)}
+            onLogout={handleLogout}
             isDarkMode={isDarkMode}
             onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
           />
@@ -206,9 +269,9 @@ export default function App() {
           <motion.aside 
             initial={false}
             animate={{ width: isSidebarCollapsed ? 80 : 256 }}
-            transition={{ type: "spring", stiffness: 350, damping: 30 }}
             className={cn(
               "flex flex-col border-r shrink-0 overflow-hidden transition-colors duration-1000 relative z-30",
+              isDarkMode ? "glass-panel" : "glass-panel-light",
               layoutTheme.bgSidebar, layoutTheme.border
             )}
           >
@@ -225,39 +288,25 @@ export default function App() {
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <AnimatePresence mode="wait">
-                {!isSidebarCollapsed && (
-                  <motion.div 
-                    key="logo"
-                    initial={{ opacity: 0, width: 0 }} 
-                    animate={{ opacity: 1, width: "auto" }} 
-                    exit={{ opacity: 0, width: 0, transition: { duration: 0.1 } }}
-                    className="flex items-center gap-3 overflow-hidden whitespace-nowrap"
-                  >
-                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shrink-0", layoutTheme.accentBg)}>C</div>
-                    <div className="truncate">
-                      <h2 className={cn("font-sans font-bold text-sm leading-none tracking-tight uppercase", isDarkMode ? "text-white" : "text-slate-900")}>CREA.OS</h2>
-                      <span className="text-[10px] text-slate-500 font-mono block uppercase truncate">SaaS Multi-Tenant</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {!isSidebarCollapsed && (
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  className="flex items-center gap-3 overflow-hidden"
+                >
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shrink-0", layoutTheme.accentBg)}>C</div>
+                  <div className="truncate">
+                    <h2 className={cn("font-sans font-bold text-sm leading-none tracking-tight uppercase", isDarkMode ? "text-white" : "text-slate-900")}>CREA.OS</h2>
+                    <span className="text-[10px] text-slate-500 font-mono block uppercase truncate">SaaS Multi-Tenant</span>
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-2 scrollbar-hide">
-              <AnimatePresence mode="wait">
-                {!isSidebarCollapsed && (
-                  <motion.div 
-                    key="workspace-title"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0, transition: { duration: 0.1 } }}
-                    className="text-[10px] uppercase font-black text-slate-600 px-3 pb-4 tracking-[0.2em] truncate whitespace-nowrap"
-                  >
-                    Workspace
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {!isSidebarCollapsed && (
+                <div className="text-[10px] uppercase font-black text-slate-600 px-3 mb-4 tracking-[0.2em] truncate">Workspace</div>
+              )}
               
               {menuItems.map((item) => (
                 <motion.button 
@@ -267,7 +316,7 @@ export default function App() {
                   onClick={() => setView(item.id as any)}
                   title={isSidebarCollapsed ? item.label : undefined}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black transition-all group relative uppercase tracking-widest overflow-hidden",
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black transition-all group relative uppercase tracking-widest",
                     isSidebarCollapsed && "justify-center px-0",
                     view === item.id 
                       ? `text-white ${layoutTheme.accentBg} ${layoutTheme.shadowLg}` 
@@ -280,19 +329,7 @@ export default function App() {
                     "w-4 h-4 shrink-0 transition-all duration-300", 
                     view === item.id ? "text-white scale-110" : `text-slate-500 ${layoutTheme.accentTextGroupHover} group-hover:scale-110`
                   )} />
-                  <AnimatePresence mode="wait">
-                    {!isSidebarCollapsed && (
-                      <motion.span 
-                        key="nav-label"
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: "auto" }}
-                        exit={{ opacity: 0, width: 0, transition: { duration: 0.1 } }}
-                        className="truncate whitespace-nowrap text-left"
-                      >
-                        {item.label}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
+                  {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                   {view === item.id && (
                     <motion.div 
                       layoutId="active-nav"
@@ -306,30 +343,23 @@ export default function App() {
               ))}
             </nav>
 
-            <AnimatePresence mode="wait">
-              {!isSidebarCollapsed && (
-                <motion.div 
-                  key="user-rank"
-                  initial={{ opacity: 0, scale: 0.95, height: 0 }}
-                  animate={{ opacity: 1, scale: 1, height: "auto" }}
-                  exit={{ opacity: 0, scale: 0.95, height: 0, transition: { duration: 0.1 } }}
-                  className="px-4 mb-4"
-                >
-                  <div className={cn(
-                    "p-4 rounded-xl border relative overflow-hidden group/rank transition-all duration-500",
-                    isDarkMode 
-                      ? `bg-slate-900 shadow-xl border-white/5 ${layoutTheme.borderHoverBase}` 
-                      : `bg-white shadow-sm border-slate-200 ${layoutTheme.borderHoverBase}`
-                  )}>
+            {!isSidebarCollapsed && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  "p-4 mx-4 mb-4 rounded-xl border relative overflow-hidden group/rank transition-all duration-500",
+                  isDarkMode 
+                    ? `bg-slate-900 shadow-xl border-white/5 ${layoutTheme.borderHoverBase}` 
+                    : `bg-white shadow-sm border-slate-200 ${layoutTheme.borderHoverBase}`
+                )}
+              >
                 {/* Background Decoration */}
                 <div className={cn(
                   "absolute inset-0 pointer-events-none opacity-[0.03]",
                   "bg-[url('https://www.transparenttextures.com/patterns/japanese-sayagata.png')]"
                 )} />
-                <div className={cn(
-                  "absolute top-0 right-0 w-32 h-32 blur-3xl pointer-events-none -mr-10 -mt-10",
-                  layoutTheme.bgDim
-                )} />
+                <div className={cn("absolute inset-x-0 top-0 h-px pointer-events-none", layoutTheme.accentBg)} />
                 
                 <div className="relative z-10">
                   <div className="flex justify-between items-center mb-3">
@@ -372,59 +402,51 @@ export default function App() {
                     </div>
                     <div className="text-right">
                        <span className={cn("text-[7px] font-black uppercase tracking-widest block mb-0.5", isDarkMode ? "text-slate-500" : "text-slate-400")}>Status</span>
-                       <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest block leading-none">ESTÁVEL</span>
+                       <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest block leading-none">ESTÃVEL</span>
                     </div>
                   </div>
                 </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+              </motion.div>
+            )}
 
             <div className={cn(
-              "p-4 border-t flex flex-col group relative transition-all duration-1000",
-              isSidebarCollapsed ? "h-16 items-center justify-center p-0" : "h-auto",
+              "border-t flex group relative transition-all duration-1000",
+              isSidebarCollapsed ? "h-20 items-center justify-center px-0 py-0" : "p-4",
               layoutTheme.border
             )}>
-              <div className="flex items-center justify-between w-full relative z-[60]">
+              <div className={cn(
+                "flex items-center relative z-[60]",
+                isSidebarCollapsed ? "justify-center w-full" : "justify-between w-full"
+              )}>
                 <div 
                   onClick={() => setIsUserDetailsVisible(!isUserDetailsVisible)}
-                  className="flex items-center gap-3 overflow-hidden cursor-pointer group/user shrink-0"
+                  className={cn(
+                    "flex items-center overflow-hidden cursor-pointer group/user shrink-0",
+                    isSidebarCollapsed ? "justify-center w-12 h-12" : "gap-3"
+                  )}
                 >
                   <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg ring-2 ring-white/10 group-hover/user:scale-105 transition-transform duration-500", layoutTheme.gradientStart, layoutTheme.gradientVia, layoutTheme.gradientEnd, layoutTheme.shadowGlow)}>
                     {finalUser?.name?.charAt(0) || 'U'}
                   </div>
-                  <AnimatePresence mode="wait">
-                    {!isSidebarCollapsed && (
-                      <motion.div 
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: "auto" }}
-                        exit={{ opacity: 0, width: 0, transition: { duration: 0.1 } }}
-                        className="flex flex-col overflow-hidden group/text whitespace-nowrap"
-                      >
-                        <span className={cn("text-[11px] font-black leading-none truncate uppercase tracking-tighter transition-colors", isDarkMode ? "text-slate-100" : "text-slate-900", layoutTheme.accentTextGroupHover)}>{finalUser?.name}</span>
-                        <span className="text-[8px] text-slate-500 truncate uppercase font-mono mt-1 font-black">Nazarick System</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {!isSidebarCollapsed && (
+                    <div className="flex flex-col overflow-hidden group/text">
+                      <span className={cn("text-[11px] font-black leading-none truncate uppercase tracking-tighter transition-colors", isDarkMode ? "text-slate-100" : "text-slate-900", layoutTheme.accentTextGroupHover)}>{finalUser?.name}</span>
+                      <span className="text-[8px] text-slate-500 truncate uppercase font-mono mt-1 font-black">Nazarick System</span>
+                    </div>
+                  )}
                 </div>
                 
-                <AnimatePresence mode="wait">
-                  {!isSidebarCollapsed && (
-                    <motion.button 
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.1 } }}
-                      onClick={() => signOut(auth)}
-                      className={cn(
-                        "p-2 transition-colors rounded-lg shrink-0",
-                        isDarkMode ? "text-slate-600 hover:text-red-400 bg-slate-800/50" : "text-slate-400 hover:text-red-500 bg-slate-100"
-                      )}
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                    </motion.button>
-                  )}
-                </AnimatePresence>
+                {!isSidebarCollapsed && (
+                  <button 
+                    onClick={handleLogout}
+                    className={cn(
+                      "p-2 transition-colors rounded-lg",
+                      isDarkMode ? "text-slate-600 hover:text-red-400 bg-slate-800/50" : "text-slate-400 hover:text-red-500 bg-slate-100"
+                    )}
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* User Detail Floating Box - MOVED AND POSITIONED */}
@@ -435,9 +457,9 @@ export default function App() {
                     animate={{ opacity: 1, x: 0, scale: 1 }}
                     exit={{ opacity: 0, x: -10, scale: 0.95 }}
                     className={cn(
-                      "fixed left-[84px] bottom-4 w-72 border rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] backdrop-blur-xl transition-colors duration-500",
+                      "fixed left-[84px] bottom-4 w-72 border rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.35)] z-[100] transition-colors duration-500",
                       !isSidebarCollapsed && "left-[260px]",
-                      isDarkMode ? "bg-slate-900 border-slate-700/50" : "bg-white border-slate-200"
+                      isDarkMode ? "glass-panel border-white/10" : "glass-panel-light border-slate-200/60"
                     )}
                   >
                      <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/5">
@@ -445,7 +467,7 @@ export default function App() {
                           {finalUser?.name?.charAt(0) || 'U'}
                         </div>
                         <div>
-                           <h4 className={cn("text-sm font-black uppercase tracking-tighter", isDarkMode ? "text-white" : "text-slate-900")}>{finalUser?.name || 'Usuário'}</h4>
+                           <h4 className={cn("text-sm font-black uppercase tracking-tighter", isDarkMode ? "text-white" : "text-slate-900")}>{finalUser?.name || 'UsuÃ¡rio'}</h4>
                            <p className={cn("text-[8px] font-black uppercase tracking-widest mt-0.5", layoutTheme.accentText)}>{finalUser?.role}</p>
                         </div>
                      </div>
@@ -504,7 +526,7 @@ export default function App() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 relative">
                     <h1 className={cn("text-xl font-black uppercase tracking-tighter flex items-center gap-2", isDarkMode ? "text-white" : "text-slate-900")}>
-                      {finalUser?.name?.replace(/^adm\s+/i, '').split(' ')[0] || 'Usuário'}
+                      {finalUser?.name?.replace(/^adm\s+/i, '').split(' ')[0] || 'UsuÃ¡rio'}
                     </h1>
                     <div className="flex items-center gap-1.5 cursor-help">
                       <span className={cn("text-[8px] text-white px-2 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm", layoutTheme.accentBg)}>{finalUser?.operationalMode}</span>
@@ -516,19 +538,19 @@ export default function App() {
                     "flex items-center gap-2 px-3 py-1 rounded-lg border shadow-sm transition-colors duration-500",
                     isDarkMode ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-200"
                   )}>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Nível {finalUser?.level || 1}</span>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">NÃ­vel {finalUser?.level || 1}</span>
                   </div>
                   
                   {/* Comando Supremo - Fragmentos e Simulador */}
                   {user?.role === NazarickRole.MOMONGA && (
                     <div className={cn(
-                      "flex items-center ml-2 p-1 rounded-xl border shadow-sm backdrop-blur-md relative",
+                      "flex items-center ml-2 p-1 rounded-xl border shadow-sm glass-control relative",
                       layoutTheme.bgDim,
                       isDarkMode ? "border-white/10" : "border-slate-200"
                     )}>
                       {/* Badge Momonga Effect */}
                       <div className={cn("absolute -top-1.5 -left-1.5 w-4 h-4 rounded-md border flex items-center justify-center shadow-lg rotate-12 z-10", layoutTheme.accentBg, isDarkMode ? "border-white/10" : "border-white/20")}>
-                        <span className="text-[10px] text-white font-overlord font-black -rotate-12 leading-none">∞</span>
+                        <span className="text-[10px] text-white font-overlord font-black -rotate-12 leading-none">âˆž</span>
                       </div>
 
                        {/* Fragmento Launcher */}
@@ -548,7 +570,7 @@ export default function App() {
 
                        {/* Simulador Launcher */}
                        <button
-                         onClick={(e) => { e.stopPropagation(); setShowSupremeSimulator(true); }}
+                         onClick={openSupremeSimulator}
                          title="Simulador dos Seres Supremos"
                          className={cn(
                            "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 group/sim relative",
@@ -604,7 +626,7 @@ export default function App() {
                     onClick={() => setShowPermissions(true)}
                     className={cn("flex items-center gap-2 px-4 py-2 text-white rounded-xl text-[10px] font-black transition-all uppercase tracking-widest", layoutTheme.accentBg, layoutTheme.shadowGlow)}
                    >
-                     <Shield className="w-3.5 h-3.5" /> Gestão
+                     <Shield className="w-3.5 h-3.5" /> GestÃ£o
                    </button>
                  )}
                  <div className="h-8 w-px bg-slate-500/20 mx-2"></div>
@@ -628,7 +650,11 @@ export default function App() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="bg-purple-600 border-b border-purple-800 overflow-hidden relative z-30 shadow-md"
+                  className={cn(
+                    "border-b overflow-hidden relative z-30 shadow-md transition-colors duration-700",
+                    layoutTheme.border,
+                    layoutTheme.accentBg
+                  )}
                 >
                   <div className="max-w-7xl mx-auto px-8 py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -636,13 +662,13 @@ export default function App() {
                         <Shield className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-black tracking-widest text-white/90 uppercase mb-0.5">MODO DE SIMULAÇÃO ATIVO — AMBIENTE 100% SIMULADO</p>
+                        <p className="text-[10px] font-black tracking-widest text-white/90 uppercase mb-0.5">MODO DE SIMULAÃ‡ÃƒO ATIVO â€” AMBIENTE 100% SIMULADO</p>
                         <div className="flex items-center gap-2 text-xs font-medium text-white shadow-sm">
-                          <span>{finalUser?.role}</span>
+                          <span className={layoutTheme.accentText}>{finalUser?.role}</span>
                           <span className="w-1 h-1 rounded-full bg-white/40" />
                           <span>Rank {finalUser?.rank || 'F'}</span>
                           <span className="w-1 h-1 rounded-full bg-white/40" />
-                          <span>Lv {finalUser?.level === Infinity ? '∞' : finalUser?.level || 1}</span>
+                          <span>Lv {finalUser?.level === Infinity ? 'âˆž' : finalUser?.level || 1}</span>
                           <span className="w-1 h-1 rounded-full bg-white/40" />
                           <span>{finalUser?.operationalMode}</span>
                         </div>
@@ -651,31 +677,37 @@ export default function App() {
                      <div className="flex items-center gap-2">
                        <button 
                          onClick={() => {
-                           alert('Relatório da simulação gerado e salvo nos arquivos locais.');
+                           alert('RelatÃ³rio da simulaÃ§Ã£o gerado e salvo nos arquivos locais.');
                          }}
                          className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/90 text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10"
                        >
-                         Salvar Relatório
+                         Salvar RelatÃ³rio
                        </button>
                        <button 
                          onClick={() => {
-                           alert('Mudanças enviadas para a fila de aprovação central.');
+                           alert('MudanÃ§as enviadas para a fila de aprovaÃ§Ã£o central.');
                            setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
                          }}
                          className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/90 text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10"
                        >
-                         Enviar P/ Aprovação
+                         Enviar P/ AprovaÃ§Ã£o
                        </button>
                        {user?.role === NazarickRole.MOMONGA && (
                          <button 
                            onClick={async () => {
-                             if (confirm('ATENÇÃO: Você está prestes a aplicar as mudanças do ambiente de simulação ao SUPREMO ESTADO REAL do sistema. Esta ação é irreversível. Prosseguir?')) {
+                             if (confirm('ATENÃ‡ÃƒO: VocÃª estÃ¡ prestes a aplicar as mudanÃ§as do ambiente de simulaÃ§Ã£o ao SUPREMO ESTADO REAL do sistema. Esta aÃ§Ã£o Ã© irreversÃ­vel. Prosseguir?')) {
                                if (simulationState.marioneteNazarick && user?.uid) {
                                  const confirmUpdate = {
                                     ...simulationState.marioneteNazarick
                                  };
-                                 await updateDoc(doc(db, 'users', user.uid), confirmUpdate);
-                                 alert('Alterações aplicadas ao estado real do OS.');
+                                  if (user.uid === 'presentation-user') {
+                                    const nextUser = { ...user, ...confirmUpdate } as User;
+                                    setUser(nextUser);
+                                    localStorage.setItem('kotaro.auth.user', JSON.stringify(nextUser));
+                                  } else {
+                                    await updateDoc(doc(db, 'users', user.uid), confirmUpdate);
+                                  }
+                                 alert('AlteraÃ§Ãµes aplicadas ao estado real do OS.');
                                  setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
                                }
                              }
@@ -686,14 +718,14 @@ export default function App() {
                          </button>
                        )}
                        <button 
-                         onClick={() => setShowSupremeSimulator(true)}
-                         className="px-4 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm ml-2"
+                         onClick={openSupremeSimulator}
+                         className={cn("px-4 py-1.5 rounded-lg text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm ml-2", layoutTheme.accentBg, layoutTheme.shadowGlow)}
                        >
-                         Ajustar Simulação
+                         Ajustar SimulaÃ§Ã£o
                        </button>
                        <button 
                          onClick={() => setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }))}
-                         className="px-4 py-1.5 rounded-lg bg-white text-purple-700 hover:bg-slate-100 text-[10px] font-black uppercase tracking-widest transition-colors shadow-md"
+                         className={cn("px-4 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-[10px] font-black uppercase tracking-widest transition-colors shadow-md", layoutTheme.accentText)}
                        >
                          Descartar / Sair
                        </button>
@@ -732,12 +764,13 @@ export default function App() {
                       profile={activeProfile!} 
                       onSidebarCollapse={(collapse) => setIsSidebarCollapsed(collapse)}
                       isDarkMode={isDarkMode}
+                      currentFragment={currentFragment}
                     />
                   )}
                   {view === 'evolution' && <Evolution user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} activeFragment={currentFragment} />}
-                  {view === 'library' && <Library user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} />}
-                  {view === 'strategy' && <Strategy user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} />}
-                  {view === 'scheduling' && <Scheduling user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} />}
+                  {view === 'library' && <Library user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} currentFragment={currentFragment} />}
+                  {view === 'strategy' && <Strategy user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} currentFragment={currentFragment} />}
+                  {view === 'scheduling' && <Scheduling user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} currentFragment={currentFragment} />}
                   {view === 'admin' && <AdminPanel />}
                   
                   {['campaigns', 'links', 'reports', 'users', 'finance'].includes(view) && (
@@ -748,8 +781,8 @@ export default function App() {
                       <div className={cn("w-20 h-20 rounded-full flex items-center justify-center mb-6", layoutTheme.bgDim)}>
                         <Layout className={cn("w-10 h-10 opacity-40", layoutTheme.accentText)} />
                       </div>
-                      <h3 className={cn("font-bold text-2xl tracking-tight mb-2 uppercase", isDarkMode ? "text-white" : "text-slate-800")}>Interface em Manutenção</h3>
-                      <p className="text-sm text-slate-500 italic max-w-sm text-center font-medium">Os artesãos de Nazarick estão calibrando este setor. Disponível em breve no CREA.OS.</p>
+                      <h3 className={cn("font-bold text-2xl tracking-tight mb-2 uppercase", isDarkMode ? "text-white" : "text-slate-800")}>Interface em ManutenÃ§Ã£o</h3>
+                      <p className="text-sm text-slate-500 italic max-w-sm text-center font-medium">Os artesÃ£os de Nazarick estÃ£o calibrando este setor. DisponÃ­vel em breve no CREA.OS.</p>
                     </div>
                   )}
                 </motion.div>
@@ -764,201 +797,16 @@ export default function App() {
       </AnimatePresence>
     </motion.div>
     )}
-    </AnimatePresence>
 
-      {/* Global Cinematic Intro Layer */}
-      <AnimatePresence>
-        {isIntroActive && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className={cn(
-              "fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden",
-              isDarkMode ? "bg-slate-950" : "bg-white"
-            )}
-          >
-            {/* Force background color */}
-            <style dangerouslySetInnerHTML={{ __html: `body { background-color: ${isDarkMode ? '#020617' : '#ffffff'} !important; }` }} />
-            
-            {/* Subtle Grid Pattern */}
-            <div className={cn(
-              "absolute inset-0 opacity-[0.02] pointer-events-none",
-              isDarkMode ? "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" : "bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)] bg-[size:40px_40px]"
-            )} />
-            
-            <div className="relative flex items-center justify-center scale-75 md:scale-100 perspective-1000">
-              {/* Spinning HUD Rings */}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-                className={cn(
-                  "absolute w-[700px] h-[700px] border rounded-full border-dashed opacity-[0.05]",
-                  isDarkMode ? "border-white/20" : "border-black/20"
-                )}
-              />
-              <motion.div
-                animate={{ rotate: -360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                className={cn(
-                  "absolute w-[650px] h-[650px] border-t border-l rounded-full opacity-[0.03]",
-                  isDarkMode ? "border-white/20" : "border-black/20"
-                )}
-              />
-
-              {/* Insignia Background (Ainz Ooal Gown Crest - ABSOLUTE FIDELITY) */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.1, rotate: -30 }}
-                animate={{ 
-                  opacity: [0, 1, 1, 0],
-                  scale: [0.1, 1, 1.05, 8],
-                  rotate: [-30, 0, 0, 10],
-                }}
-                transition={{ duration: 3.5, times: [0, 0.2, 0.8, 1], ease: "easeOut" }}
-                className={cn(
-                  "absolute w-[900px] h-[900px] pointer-events-none flex items-center justify-center",
-                  layoutTheme.accentText
-                )}
-              >
-                {/* Aura Layers */}
-                <motion.div 
-                  animate={{ 
-                    scale: [1, 1.1, 1],
-                    opacity: [0.3, 0.6, 0.3],
-                    filter: ["blur(40px) brightness(1)", "blur(60px) brightness(1.5)", "blur(40px) brightness(1)"]
-                  }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className={cn("absolute inset-0 rounded-full", layoutTheme.bgDim)}
-                />
-                
-                {/* Particles of Power */}
-                {[...Array(12)].map((_, i) => (
-                  <motion.div
-                    key={`particle-${i}`}
-                    initial={{ x: 0, y: 0, opacity: 0 }}
-                    animate={{ 
-                      x: (Math.random() - 0.5) * 400, 
-                      y: (Math.random() - 0.5) * 400, 
-                      opacity: [0, 0.8, 0],
-                      scale: [0, 1, 0]
-                    }}
-                    transition={{ 
-                      duration: 2 + Math.random() * 2, 
-                      repeat: Infinity, 
-                      delay: Math.random() * 2 
-                    }}
-                    className={cn("absolute w-2 h-2 rounded-full blur-[2px]", layoutTheme.accentBg)}
-                  />
-                ))}
-
-                <svg viewBox="0 0 500 500" className={cn(
-                  "w-full h-full fill-current relative z-10",
-                  layoutTheme.shadowGlow
-                )}>
-                  <g transform="translate(250, 250)">
-                    {/* Central Vertical Spine */}
-                    <path d="M -1.5,-210 L 1.5,-210 L 1.5,190 L -1.5,190 Z" />
-                    <circle cx="0" cy="-210" r="3" />
-                    
-                    {[1, -1].map((side) => (
-                      <g key={`side-${side}`} transform={`scale(${side}, 1)`}>
-                        {/* Recursive Horns/Spikes (Top half) */}
-                        <path d="M 5,-190 L 25,-210 L 45,-205 L 55,-180 L 15,-150 Q 80,-175 105,-155 L 115,-130 L 90,-115 L 10,-140 Z" />
-                        <path d="M 12,-120 Q 60,-140 95,-100 L 115,-115 L 125,-75 L 105,-65 Z" />
-                        
-                        {/* Main Body Wings - Jagged & Symmetric */}
-                        <path d="M 15,-80 Q 90,-120 120,-80 L 140,-95 L 150,-60 L 130,-50 Q 180,-50 195,-15 L 215,-30 L 220,10 L 185,0 Q 210,30 210,80 L 225,70 L 200,120 L 155,95 Q 130,140 70,165 L 5,145 V 100 Q 50,110 90,80 L 100,50 L 70,70 L 60,30 L 90,25 L 80,-20 L 110,-30 L 100,-70 L 60,-50 L 15,-75 Z" />
-                        
-                        {/* Decorative Interior Voids */}
-                        <path d="M 30,-35 L 55,-15 L 50,25 L 25,45 Z" opacity="0.5" />
-                        <path d="M 35,65 L 65,90 L 60,130 L 30,150 Z" opacity="0.5" />
-                        
-                        {/* Bottom Frame Base */}
-                        <path d="M 5,160 Q 95,150 160,120 L 170,140 Q 95,175 5,200 Z" />
-                        <path d="M 65,180 V 220 H 75 V 176 Z" />
-                        <path d="M 125,155 V 205 H 135 V 148 Z" />
-                      </g>
-                    ))}
-                    
-                    {/* Top Spike - Zenith */}
-                    <path d="M 0,-215 L 15,-185 H -15 Z" />
-                  </g>
-                </svg>
-              </motion.div>
-
-              {/* Main KC Text with Kinetic Impact */}
-              <motion.div
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ 
-                  scale: [0.6, 1, 1, 20],
-                  opacity: [0, 1, 1, 0],
-                  filter: ['blur(12px)', 'blur(0px)', 'blur(0px)', 'blur(40px)']
-                }}
-                transition={{ duration: 3.8, times: [0, 0.2, 0.8, 1], ease: [0.19, 1, 0.22, 1] }}
-                className="relative z-10 flex flex-col items-center justify-center -mt-10"
-              >
-                <div className="relative group">
-                  <span className={cn(
-                    "text-[180px] md:text-[380px] font-overlord select-none leading-none filter relative inline-block tracking-tighter drop-shadow-2xl",
-                    isDarkMode ? "text-white" : layoutTheme.textPrimary
-                  )}>
-                    KC
-                    {/* Inner detail for KC */}
-                    <span className={cn("absolute inset-0 blur-[10px] scale-95 opacity-50", layoutTheme.accentText)} aria-hidden="true">KC</span>
-                  </span>
-                </div>
-
-                <motion.div
-                   initial={{ opacity: 0, y: 10 }}
-                   animate={{ opacity: [0, 1, 1, 0], y: [10, 0, 0, -10] }}
-                   transition={{ duration: 3.8, times: [0, 0.25, 0.75, 1] }}
-                   className={cn(
-                     "mt-6 text-[14px] font-black uppercase font-mono tracking-[1.5em]",
-                     layoutTheme.accentText
-                   )}
-                >
-                  NAZARICK_SINC
-                </motion.div>
-              </motion.div>
-            </div>
-
-            {/* Fast Sequential Status Messages */}
-            <div className="absolute bottom-32 left-0 w-full flex flex-col items-center gap-2">
-               <motion.div
-                 animate={{ opacity: [0, 1, 0], y: [10, 0, -10] }}
-                 transition={{ duration: 0.5, times: [0, 0.5, 1], delay: 0.2 }}
-                 className={cn("text-[10px] font-mono font-black uppercase tracking-[0.8em] opacity-0", layoutTheme.accentText)}
-               >
-                 PROTOCOLO_DESPERTAR
-               </motion.div>
-               <motion.div
-                 animate={{ opacity: [0, 1, 0], y: [10, 0, -10] }}
-                 transition={{ duration: 0.5, times: [0, 0.5, 1], delay: 0.6 }}
-                 className={cn("text-[10px] font-mono font-black uppercase tracking-[0.8em] opacity-0", layoutTheme.accentText)}
-               >
-                 TUMBA_RECONECTADA
-               </motion.div>
-            </div>
-
-            {/* Final Transition Veil with Glitch Effect */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0, 1, 1, 0.5, 0] }}
-              transition={{ duration: 2.6, times: [0, 0.6, 0.75, 0.85, 0.95, 1] }}
-              className={cn(
-                "absolute inset-0 z-[10000] pointer-events-none backdrop-blur-sm",
-                isDarkMode ? "bg-slate-950" : "bg-white"
-              )}
-            >
-               <motion.div 
-                 animate={{ opacity: [0, 1, 0] }}
-                 transition={{ duration: 0.2, delay: 1.8 }}
-                 className={cn("absolute inset-0 mix-blend-overlay", layoutTheme.bgDim)}
-               />
-            </motion.div>
-          </motion.div>
-        )}
+      <YggnarokTransition
+        active={yggnarok.active}
+        mode={yggnarok.mode}
+        roleName={yggnarok.roleName}
+        context={yggnarok.context}
+        runId={yggnarok.runId}
+        onComplete={() => setYggnarok((current) => ({ ...current, active: false }))}
+      />
+         
         
         <AnimatePresence>
           {showSupremeSimulator && user?.role === NazarickRole.MOMONGA && (
@@ -966,20 +814,23 @@ export default function App() {
                  realUser={user}
                  simulationState={simulationState}
                  onStartSimulation={(simulatedUser, targetFragment) => {
-                   setSimulationState(prev => ({
-                     ...prev,
-                     isActive: true,
-                     marioneteNazarick: {
-                        ...simulatedUser,
-                        id: "simulation_marionete_nazarick",
-                        displayName: "Marionete de Nazarick",
-                        type: "simulation_only",
-                        origin: "simulation",
-                        isRealUser: false,
-                     },
-                     simulatedFragment: targetFragment || activeFragment
-                   }));
-                   setShowSupremeSimulator(false);
+                   flushSync(() => {
+                     setSimulationState(prev => ({
+                       ...prev,
+                       isActive: true,
+                       marioneteNazarick: {
+                          ...simulatedUser,
+                          id: "simulation_marionete_nazarick",
+                          displayName: "Marionete de Nazarick",
+                          type: "simulation_only",
+                          origin: "simulation",
+                          isRealUser: false,
+                       },
+                       simulatedFragment: targetFragment || activeFragment
+                     }));
+                     setShowSupremeSimulator(false);
+                   });
+                   startYggnarok(roleTransition(simulatedUser.role));
                  }}
                  onDiscard={() => {
                    setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
@@ -994,11 +845,15 @@ export default function App() {
             <FragmentSelector
               activeFragment={currentFragment}
               onSelect={(fragment) => {
-                if (simulationState.isActive) {
-                  setSimulationState(prev => ({ ...prev, simulatedFragment: fragment }));
-                } else {
-                  setActiveFragment(fragment);
-                }
+                flushSync(() => {
+                  setShowFragmentSelector(false);
+                  if (simulationState.isActive) {
+                    setSimulationState(prev => ({ ...prev, simulatedFragment: fragment }));
+                  } else {
+                    setActiveFragment(fragment);
+                  }
+                });
+                startYggnarok({ mode: fragmentToYggnarokMode(fragment), context: 'fragment' });
               }}
               onClose={() => setShowFragmentSelector(false)}
               isDarkMode={isDarkMode}
@@ -1008,15 +863,18 @@ export default function App() {
                 if (simulationState.isActive) {
                   setSimulationState(prev => ({ ...prev, marioneteNazarick: { ...prev.marioneteNazarick, operationalMode: mode } }));
                 } else {
-                  await updateDoc(doc(db, 'users', user.uid), { operationalMode: mode });
+                  if (user.uid === 'presentation-user') {
+                    const nextUser = { ...user, operationalMode: mode };
+                    setUser(nextUser);
+                    localStorage.setItem('kotaro.auth.user', JSON.stringify(nextUser));
+                  } else {
+                    await updateDoc(doc(db, 'users', user.uid), { operationalMode: mode });
+                  }
                 }
               }}
             />
           )}
         </AnimatePresence>
-        
-        {/* Content Area uses AnimatePresence mode wait */}
-      </AnimatePresence>
     </>
   );
 }

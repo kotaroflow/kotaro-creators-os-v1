@@ -6,8 +6,9 @@ import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTim
 import { Sparkles, FileText, Video, MessageSquare, Loader2, Wand2, PlayCircle, Save, CheckCircle2, Type, Send, Lock, AlertCircle, CheckCircle, Search, History, Trash2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
+import { getLayoutTheme } from '../../lib/theme';
 
-export default function ContentCreation({ user, profile, onSidebarCollapse, isDarkMode }: { user: User, profile: Profile, onSidebarCollapse?: (c: boolean) => void, isDarkMode?: boolean }) {
+export default function ContentCreation({ user, profile, onSidebarCollapse, isDarkMode, currentFragment = 'MOMONGA' }: { user: User, profile: Profile, onSidebarCollapse?: (c: boolean) => void, isDarkMode?: boolean, currentFragment?: string }) {
   const [loading, setLoading] = useState(false);
   const [activeType, setActiveType] = useState<'Video' | 'Post' | 'Story'>('Video');
   const [activeTab, setActiveTab] = useState<'Generator' | 'Visual' | 'Subtitles' | 'Drafts'>('Generator');
@@ -18,9 +19,19 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
   const [userIdea, setUserIdea] = useState('');
   const [feedback, setFeedback] = useState('');
   const [drafts, setDrafts] = useState<Content[]>([]);
+  const [errorMessage, setErrorMessage] = useState('');
+  const isPresentationMode = user.uid === 'presentation-user';
+  const draftsStorageKey = `kotaro.presentation.contents.${profile.id}`;
+  const layoutTheme = getLayoutTheme(currentFragment, isDarkMode || false);
 
   // Fetch drafts
   React.useEffect(() => {
+    if (isPresentationMode) {
+      const saved = localStorage.getItem(draftsStorageKey);
+      setDrafts(saved ? JSON.parse(saved) : []);
+      return;
+    }
+
     const q = query(
       collection(db, `profiles/${profile.id}/contents`),
       where('status', '==', 'Draft')
@@ -29,11 +40,12 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
       setDrafts(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Content)));
     });
     return unsub;
-  }, [profile.id]);
+  }, [draftsStorageKey, isPresentationMode, profile.id]);
 
   const handleAnalyzeIdea = async () => {
     if (!userIdea.trim()) return;
     setLoading(true);
+    setErrorMessage('');
     try {
       const data = await analyzeUserIdea(profile, userIdea, user.tags);
       setIdeaAnalysis(data);
@@ -45,6 +57,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
       }
     } catch (error) {
       console.error(error);
+      setErrorMessage(error instanceof Error ? error.message : 'Nao foi possivel analisar a ideia agora.');
     } finally {
       setLoading(false);
     }
@@ -54,12 +67,14 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
     setLoading(true);
     setSaved(false);
     setIsPromptPerfected(false);
+    setErrorMessage('');
     try {
       const data = await generateContentIdea(profile, activeType, userIdea, user.tags);
       setResult(data);
       if (onSidebarCollapse) onSidebarCollapse(true); // Recede sidebar for focus
     } catch (error) {
       console.error(error);
+      setErrorMessage(error instanceof Error ? error.message : 'Nao foi possivel gerar o conteudo agora.');
     } finally {
       setLoading(false);
     }
@@ -67,6 +82,13 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
 
   const handleDeleteDraft = async (draftId: string) => {
     try {
+      if (isPresentationMode) {
+        const nextDrafts = drafts.filter((draft) => draft.id !== draftId);
+        setDrafts(nextDrafts);
+        localStorage.setItem(draftsStorageKey, JSON.stringify(nextDrafts));
+        return;
+      }
+
       await deleteDoc(doc(db, `profiles/${profile.id}/contents`, draftId));
     } catch (error) {
        handleFirestoreError(error, OperationType.DELETE, 'conteúdo');
@@ -78,12 +100,14 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
     if (!feedback.trim() || !result) return;
     
     setLoading(true);
+    setErrorMessage('');
     try {
       const data = await refineContent(profile, result, feedback, user.tags);
       setResult(data);
       setFeedback('');
     } catch (error) {
       console.error(error);
+      setErrorMessage(error instanceof Error ? error.message : 'Nao foi possivel ajustar o conteudo agora.');
     } finally {
       setLoading(false);
     }
@@ -94,6 +118,22 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
     setLoading(true);
     const contentsPath = `profiles/${profile.id}/contents`;
     try {
+      if (isPresentationMode) {
+        const contentData: Content = {
+          id: `local-content-${Date.now()}`,
+          title: result.title,
+          type: activeType,
+          status: 'Draft',
+          script: result.script,
+          aiPrompt: JSON.stringify({ hook: result.hook, cta: result.cta })
+        };
+        const nextDrafts = [contentData, ...drafts];
+        setDrafts(nextDrafts);
+        localStorage.setItem(draftsStorageKey, JSON.stringify(nextDrafts));
+        setSaved(true);
+        return;
+      }
+
       const contentRef = doc(collection(db, contentsPath));
       const contentData = {
         id: contentRef.id,
@@ -119,8 +159,8 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
     <div className="max-w-6xl mx-auto space-y-10 pb-20 transition-all duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-           <h2 className={cn("text-3xl font-bold tracking-tight group flex items-center gap-2 transition-colors", isDarkMode ? "text-white" : "text-slate-900")}>
-             Compositor I.A. Studio <Sparkles className="w-6 h-6 text-indigo-500 animate-pulse" />
+           <h2 className={cn("text-3xl font-bold tracking-tight group flex items-center gap-2 transition-colors", layoutTheme.textPrimary)}>
+             Compositor I.A. Studio <Sparkles className={cn("w-6 h-6 animate-pulse", layoutTheme.accentText)} />
            </h2>
            <p className="text-slate-400 uppercase text-[10px] font-bold tracking-[0.2em] mt-1">Criação de Ativos Multimodais</p>
         </div>
@@ -132,7 +172,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                 className={cn(
                   "px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg transition-all",
                   activeType === type 
-                    ? (isDarkMode ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "bg-indigo-50 text-indigo-600 border border-indigo-100") 
+                    ? cn("text-white shadow-lg", layoutTheme.accentBg, layoutTheme.shadowGlow) 
                     : isDarkMode ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"
                 )}
               >
@@ -153,7 +193,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
               className={cn(
                 "pb-4 px-2 text-xs font-bold uppercase tracking-widest transition-all relative flex items-center gap-2 whitespace-nowrap",
                 activeTab === tab 
-                  ? "text-indigo-500" 
+                  ? layoutTheme.accentText 
                   : isDarkMode ? "text-slate-600 hover:text-slate-400" : "text-slate-400 hover:text-slate-600",
                 isLocked && "cursor-not-allowed opacity-30"
               )}
@@ -164,7 +204,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                 <span className={cn("ml-1 text-[8px] px-1.5 py-0.5 rounded-full transition-colors", isDarkMode ? "bg-white/10 text-slate-400" : "bg-slate-100 text-slate-500")}>{drafts.length}</span>
               )}
               {activeTab === tab && (
-                <motion.div layoutId="activeTabCreation" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
+                <motion.div layoutId="activeTabCreation" className={cn("absolute bottom-0 left-0 right-0 h-0.5", layoutTheme.accentBg)} />
               )}
             </button>
           );
@@ -174,11 +214,11 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className={cn(
           "p-10 border flex flex-col justify-center items-center text-center space-y-6 min-h-[500px] rounded-3xl transition-all duration-500",
-          isDarkMode ? "bg-slate-900 border-white/5 shadow-black/40 shadow-2xl" : "bg-white border-slate-200 shadow-sm"
+          isDarkMode ? "glass-panel border-white/5 shadow-black/30 shadow-2xl" : "glass-panel-light border-slate-200/60 shadow-sm"
         )}>
            {activeTab === 'Generator' ? (
               <>
-                 <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center shadow-inner transition-colors", isDarkMode ? "bg-black/20 text-indigo-400" : "bg-indigo-50 text-indigo-600")}>
+                 <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center shadow-inner transition-colors", layoutTheme.bgDim, layoutTheme.accentText)}>
                    <Wand2 className={`w-10 h-10 ${loading ? 'animate-spin' : ''}`} />
                  </div>
                  
@@ -197,18 +237,27 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                      onChange={(e) => setUserIdea(e.target.value)}
                      placeholder="Descreva sua ideia (ex: Um vídeo sobre como ADMs podem dominar scripts de vendas...)"
                      className={cn(
-                       "w-full h-32 p-4 border rounded-2xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-transparent transition-all resize-none outline-none",
+                       "w-full h-32 p-4 border rounded-2xl text-sm focus:ring-1 focus:border-transparent transition-all resize-none outline-none glass-control",
                        isDarkMode ? "bg-black/40 border-white/5 text-white placeholder:text-slate-700" : "bg-slate-50 border-slate-200 text-slate-900"
                      )}
                    />
                  </div>
 
                  <div className="w-full space-y-3">
+                   {errorMessage && (
+                     <div className={cn(
+                       "p-4 rounded-2xl border text-[11px] font-bold leading-relaxed text-left",
+                       isDarkMode ? "bg-red-950/30 border-red-500/20 text-red-200" : "bg-red-50 border-red-100 text-red-700"
+                     )}>
+                       {errorMessage}
+                     </div>
+                   )}
+
                    {!ideaAnalysis ? (
                      <button 
                        disabled={loading || !userIdea.trim()}
                        onClick={handleAnalyzeIdea}
-                       className="nazarick-button w-full py-5 flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest shadow-xl shadow-indigo-900/10"
+                       className={cn("w-full py-5 flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest rounded-lg text-white transition-all disabled:opacity-50", layoutTheme.accentBg, layoutTheme.shadowLg)}
                      >
                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
                        ANALISAR VIABILIDADE
@@ -217,7 +266,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                      <button 
                        disabled={loading}
                        onClick={handleGenerate}
-                       className="nazarick-button w-full py-5 flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest shadow-xl shadow-indigo-900/10"
+                       className={cn("w-full py-5 flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest rounded-lg text-white transition-all disabled:opacity-50", layoutTheme.accentBg, layoutTheme.shadowLg)}
                      >
                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                        GERAR MANIFESTAÇÃO
@@ -231,35 +280,32 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                        className={cn(
                          "p-6 rounded-3xl text-left border relative overflow-hidden group transition-all duration-500 shadow-xl",
                          isDarkMode 
-                          ? "bg-slate-900 border-indigo-500/20 shadow-indigo-500/5"
-                          : "bg-white border-indigo-100 shadow-indigo-500/5"
+                          ? cn("bg-slate-900 border-white/10", layoutTheme.shadowGlow)
+                          : "glass-panel-light border-slate-200/60"
                        )}
                      >
                        {/* Subtle animated background */}
                        <motion.div 
-                         animate={{ 
-                           opacity: isDarkMode ? [0.05, 0.1, 0.05] : [0.02, 0.05, 0.02],
-                           scale: [1, 1.1, 1]
-                         }}
+                         animate={{ opacity: isDarkMode ? [0.18, 0.32, 0.18] : [0.12, 0.24, 0.12] }}
                          transition={{ duration: 5, repeat: Infinity }}
-                         className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-500 blur-2xl -z-10"
+                         className={cn("absolute inset-x-6 top-0 h-px -z-10", layoutTheme.accentBg)}
                        />
                        <div className="absolute inset-0 opacity-[0.02] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] pointer-events-none" />
 
                        <div className="flex justify-between items-center mb-4 relative z-10">
                          <div className="flex items-center gap-2">
-                           <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                             <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
+                           <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center", layoutTheme.bgDim)}>
+                             <Sparkles className={cn("w-4 h-4 animate-pulse", layoutTheme.accentText)} />
                            </div>
                            <span className={cn(
                              "text-[9px] font-black uppercase tracking-[0.2em]",
                              ideaAnalysis.status === 'Excelente' ? "text-emerald-500" : 
-                             ideaAnalysis.status === 'Boa' ? "text-indigo-500" : "text-amber-500"
+                             ideaAnalysis.status === 'Boa' ? layoutTheme.accentText : "text-amber-500"
                            )}>
                              {ideaAnalysis.status === 'Excelente' ? 'Protocolo_Alfa' : 'Análise_Operacional'}
                            </span>
                          </div>
-                         <button onClick={() => setIdeaAnalysis(null)} className="text-[9px] font-black text-slate-500 hover:text-indigo-500 uppercase tracking-widest transition-colors">DESCARTAR</button>
+                         <button onClick={() => setIdeaAnalysis(null)} className={cn("text-[9px] font-black text-slate-500 uppercase tracking-widest transition-colors", layoutTheme.accentTextHover)}>DESCARTAR</button>
                        </div>
 
                        <p className={cn("text-[13px] leading-relaxed font-medium mb-4 relative z-10 italic", isDarkMode ? "text-slate-300" : "text-slate-600")}>
@@ -269,10 +315,10 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                        {ideaAnalysis.suggested_pivot && (
                          <div className={cn("pt-4 border-t relative z-10 transition-colors", isDarkMode ? "border-white/5" : "border-slate-100")}>
                             <div className="flex items-center gap-2 mb-2">
-                              <Wand2 className="w-3 h-3 text-indigo-400" />
-                              <p className="text-[9px] text-indigo-500 font-black uppercase tracking-widest leading-none">Sugestão do Soberano:</p>
+                              <Wand2 className={cn("w-3 h-3", layoutTheme.accentText)} />
+                              <p className={cn("text-[9px] font-black uppercase tracking-widest leading-none", layoutTheme.accentText)}>Sugestão do Soberano:</p>
                             </div>
-                            <p className={cn("text-xs font-bold leading-relaxed transition-colors", isDarkMode ? "text-indigo-100" : "text-indigo-900")}>{ideaAnalysis.suggested_pivot}</p>
+                            <p className={cn("text-xs font-bold leading-relaxed transition-colors", isDarkMode ? "text-slate-100" : "text-slate-900")}>{ideaAnalysis.suggested_pivot}</p>
                          </div>
                        )}
                      </motion.div>
@@ -285,7 +331,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                    <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700" />
                    <PlayCircle className="w-16 h-16 text-white relative z-10 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all cursor-pointer" />
                    <div className="absolute bottom-4 left-4 right-4 h-1 bg-white/20 rounded-full overflow-hidden">
-                     <div className="h-full bg-indigo-500 w-1/3 shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
+                     <div className={cn("h-full w-1/3", layoutTheme.accentBg)} />
                    </div>
                  </div>
                  <div className="grid grid-cols-2 gap-4">
@@ -297,7 +343,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
            ) : activeTab === 'Subtitles' ? (
               <div className="w-full space-y-6 text-left">
                 <div className="flex items-center gap-3 mb-4">
-                  <Type className="w-5 h-5 text-indigo-400" />
+                  <Type className={cn("w-5 h-5", layoutTheme.accentText)} />
                   <h3 className={cn("font-black uppercase text-xs tracking-widest transition-colors", isDarkMode ? "text-white" : "text-slate-800")}>Editor de Legendagem Dinâmica</h3>
                 </div>
                 <div className="space-y-3">
@@ -319,7 +365,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
            ) : (
               <div className="w-full h-full flex flex-col items-start text-left">
                 <div className="flex items-center gap-3 mb-6">
-                  <History className="w-5 h-5 text-indigo-400" />
+                  <History className={cn("w-5 h-5", layoutTheme.accentText)} />
                   <h3 className={cn("font-black uppercase text-xs tracking-widest transition-colors", isDarkMode ? "text-white" : "text-slate-800")}>Rascunhos de Nazarick</h3>
                 </div>
                 
@@ -333,7 +379,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                     {drafts.map((draft) => (
                       <div key={draft.id} className={cn("p-5 border rounded-3xl group transition-all text-left w-full", isDarkMode ? "bg-black/20 border-white/5 hover:border-indigo-500/30" : "bg-slate-50 border-slate-100 hover:border-indigo-200")}>
                         <div className="flex justify-between items-start mb-3">
-                           <span className="text-[8px] font-black uppercase bg-indigo-500 text-white px-2 py-0.5 rounded-md shadow-sm">{draft.type === 'Video' ? 'Vídeo' : 'Post'}</span>
+                           <span className={cn("text-[8px] font-black uppercase text-white px-2 py-0.5 rounded-md shadow-sm", layoutTheme.accentBg)}>{draft.type === 'Video' ? 'Vídeo' : 'Post'}</span>
                            <div className="flex gap-2">
                               <button 
                                 onClick={() => {
@@ -372,7 +418,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                   exit={{ opacity: 0, scale: 0.95 }}
                   className={cn(
                     "p-8 h-full space-y-6 flex flex-col border rounded-3xl transition-all duration-500 relative overflow-hidden",
-                    isDarkMode ? "bg-slate-900 border-indigo-500/10 shadow-black/50 shadow-2xl" : "bg-white border-indigo-50 shadow-indigo-500/5 shadow-sm"
+                    isDarkMode ? "glass-panel border-white/10 shadow-black/40 shadow-2xl" : "glass-panel-light border-slate-200/60 shadow-sm"
                   )}
                 >
                   {/* Subtle AI Aura */}
@@ -383,16 +429,16 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                       rotate: [0, 5, 0]
                     }}
                     transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute inset-0 bg-gradient-to-tr from-indigo-500/20 via-transparent to-purple-500/20 blur-[100px] pointer-events-none"
+                    className={cn("absolute inset-x-8 top-0 h-px pointer-events-none", layoutTheme.accentBg)}
                   />
 
                   <div className={cn("flex justify-between items-start border-b pb-6 transition-colors relative z-10", isDarkMode ? "border-white/5" : "border-slate-100")}>
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
-                        <Sparkles className="w-6 h-6 text-indigo-500 animate-pulse" />
+                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", layoutTheme.bgDim)}>
+                        <Sparkles className={cn("w-6 h-6 animate-pulse", layoutTheme.accentText)} />
                       </div>
                       <div>
-                        <span className="text-[9px] text-indigo-500 uppercase font-black tracking-widest bg-indigo-500/10 px-2.5 py-1 rounded-lg">Frequência Supra-Ajustada</span>
+                        <span className={cn("text-[9px] uppercase font-black tracking-widest px-2.5 py-1 rounded-lg", layoutTheme.bgDim, layoutTheme.accentText)}>Frequência Supra-Ajustada</span>
                         <h4 className={cn("text-2xl font-black tracking-tighter mt-1 transition-colors", isDarkMode ? "text-white" : "text-slate-900")}>{result.title}</h4>
                       </div>
                     </div>
@@ -400,7 +446,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                     {!isPromptPerfected && (
                       <button 
                         onClick={() => setIsPromptPerfected(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                        className={cn("flex items-center gap-2 px-4 py-2 text-white rounded-xl text-[10px] font-black uppercase transition-all shadow-lg", layoutTheme.accentBg, layoutTheme.shadowGlow)}
                       >
                         <CheckCircle className="w-4 h-4" /> Finalizar
                       </button>
@@ -421,11 +467,11 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                 </div>
 
                 <div className="space-y-4 flex-1">
-                  <div className="bg-indigo-600 p-5 rounded-3xl text-white shadow-xl shadow-indigo-900/40 relative overflow-hidden group">
+                  <div className={cn("p-5 rounded-3xl text-white shadow-xl relative overflow-hidden group", layoutTheme.accentBg, layoutTheme.shadowLg)}>
                     <motion.div 
                       animate={{ opacity: [0.3, 0.6, 0.3] }}
                       transition={{ duration: 3, repeat: Infinity }}
-                      className="absolute inset-0 bg-white/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute inset-x-4 top-0 h-px bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity"
                     />
                     <p className="text-[9px] opacity-70 uppercase tracking-widest mb-2 font-black flex items-center gap-2 relative z-10">
                       <Sparkles className="w-3 h-3" /> Gancho Sugerido
@@ -445,10 +491,10 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
 
                   <div className="flex justify-between items-center bg-slate-900 p-4 rounded-2xl text-white shadow-lg">
                     <div className="flex items-center gap-3">
-                      <MessageSquare className="w-4 h-4 text-indigo-400" />
+                      <MessageSquare className={cn("w-4 h-4", layoutTheme.accentText)} />
                       <span className="text-[9px] font-black uppercase tracking-tight leading-none">CTA: <span className="text-white ml-2 opacity-80">{result.cta}</span></span>
                     </div>
-                    <button className="text-[9px] font-black text-indigo-400 hover:text-white transition-colors uppercase tracking-widest">COPIAR</button>
+                    <button className={cn("text-[9px] font-black hover:text-white transition-colors uppercase tracking-widest", layoutTheme.accentText)}>COPIAR</button>
                   </div>
                 </div>
 
@@ -459,7 +505,7 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                     animate={{ opacity: 1, y: 0 }}
                     className={cn(
                       "p-5 rounded-2xl border relative overflow-hidden group shadow-lg",
-                      isDarkMode ? "bg-black/40 border-indigo-500/20" : "bg-indigo-50/50 border-indigo-100 shadow-indigo-500/5"
+                      isDarkMode ? "bg-black/40 border-white/10" : "glass-panel-light border-slate-200/60"
                     )}
                   >
                     <motion.div 
@@ -468,14 +514,14 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                         scale: [1, 1.2, 1]
                       }}
                       transition={{ duration: 3, repeat: Infinity }}
-                      className="absolute inset-0 bg-indigo-500/20 blur-xl -z-10"
+                      className={cn("absolute inset-x-4 top-0 h-px -z-10", layoutTheme.accentBg)}
                     />
                     
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", layoutTheme.bgDim)}>
+                        <Sparkles className={cn("w-3.5 h-3.5 animate-pulse", layoutTheme.accentText)} />
                       </div>
-                      <p className="text-[9px] text-indigo-500 font-black uppercase tracking-[0.2em] leading-none">Protocolo_De_Feedback</p>
+                      <p className={cn("text-[9px] font-black uppercase tracking-[0.2em] leading-none", layoutTheme.accentText)}>Protocolo_De_Feedback</p>
                     </div>
 
                     <p className={cn("text-[11px] leading-relaxed italic font-medium tracking-tight relative z-10", isDarkMode ? "text-slate-300" : "text-slate-700")}>
@@ -490,14 +536,14 @@ export default function ContentCreation({ user, profile, onSidebarCollapse, isDa
                       onChange={(e) => setFeedback(e.target.value)}
                       placeholder="Solicitar ajuste estratégico..."
                       className={cn(
-                        "w-full pl-4 pr-12 py-4 border rounded-2xl text-xs focus:ring-1 focus:ring-indigo-500 focus:border-transparent outline-none transition-all",
+                        "w-full pl-4 pr-12 py-4 border rounded-2xl text-xs focus:ring-1 focus:border-transparent outline-none transition-all glass-control",
                         isDarkMode ? "bg-black/40 border-white/5 text-white placeholder:text-slate-700" : "bg-slate-50 border-slate-200 text-slate-900"
                       )}
                     />
                     <button 
                       type="submit"
                       disabled={loading || !feedback.trim()}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-md shadow-indigo-600/20"
+                      className={cn("absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white rounded-xl disabled:opacity-50 transition-all shadow-md", layoutTheme.accentBg, layoutTheme.shadowGlow)}
                     >
                       <Send className="w-4 h-4" />
                     </button>

@@ -1,6 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const getGeminiClient = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+    throw new Error("Configure a GEMINI_API_KEY no arquivo .env.local para usar os recursos de IA.");
+  }
+
+  return new GoogleGenAI({ apiKey });
+};
 
 export async function generateContentIdea(profile: any, type: string, userIdea?: string, tags: string[] = []) {
   const isAinz = tags.includes('ainz ooal gown');
@@ -30,7 +38,7 @@ export async function generateContentIdea(profile: any, type: string, userIdea?:
     "ai_personality_comment": "${commentDesc}"
   }`;
 
-  const response = await ai.models.generateContent({
+  const response = await getGeminiClient().models.generateContent({
     model: "gemini-3-flash-preview",
     contents: prompt,
     config: { responseMimeType: "application/json" }
@@ -47,7 +55,7 @@ export async function generateSubtitles(script: string, tags: string[] = []) {
     
     Retorne um array de strings.`;
 
-    const response = await ai.models.generateContent({
+    const response = await getGeminiClient().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: { 
@@ -87,7 +95,7 @@ export async function refineContent(profile: any, previousContent: any, feedback
       "ai_personality_comment": "${commentDesc}"
     }`;
 
-    const response = await ai.models.generateContent({
+    const response = await getGeminiClient().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: { responseMimeType: "application/json" }
@@ -134,7 +142,7 @@ export async function analyzeUserIdea(profile: any, idea: string, tags: string[]
       "ai_comment": "${aiCommentDesc}"
     }`;
 
-    const response = await ai.models.generateContent({
+    const response = await getGeminiClient().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: { responseMimeType: "application/json" }

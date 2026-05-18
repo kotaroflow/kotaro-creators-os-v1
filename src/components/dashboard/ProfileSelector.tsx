@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { User, Profile, NazarickRole } from '../../types';
@@ -7,6 +7,51 @@ import { motion, AnimatePresence } from 'motion/react';
 
 import { cn } from '../../lib/utils';
 
+
+const DEMO_PROFILES_KEY = 'kotaro.presentation.profiles';
+
+const defaultProfiles = (userId: string): Profile[] => [
+  {
+    id: 'demo-profile-kotaro',
+    name: 'Kotaro Creators',
+    niche: 'Conteudo e IA',
+    objective: 'Planejar, criar e organizar conteudos de alto impacto',
+    socialAccounts: {},
+    ownerId: userId,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'demo-profile-nazarick',
+    name: 'Nazarick Studio',
+    niche: 'Estrategia',
+    objective: 'Transformar ideias em campanhas e roteiros',
+    socialAccounts: {},
+    ownerId: userId,
+    createdAt: new Date().toISOString()
+  }
+];
+
+const readLocalProfiles = (userId: string): Profile[] => {
+  const saved = localStorage.getItem(DEMO_PROFILES_KEY);
+  if (!saved) {
+    const profiles = defaultProfiles(userId);
+    localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(profiles));
+    return profiles;
+  }
+
+  try {
+    const parsed = JSON.parse(saved) as Profile[];
+    return parsed.length > 0 ? parsed : defaultProfiles(userId);
+  } catch {
+    const profiles = defaultProfiles(userId);
+    localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(profiles));
+    return profiles;
+  }
+};
+
+const writeLocalProfiles = (profiles: Profile[]) => {
+  localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(profiles));
+};
 interface ProfileSelectorProps {
   user: User;
   onSelect: (profile: Profile) => void;
@@ -20,8 +65,14 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
   const [isCreating, setIsCreating] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [newProfile, setNewProfile] = useState({ name: '', niche: '', objective: '' });
+  const isPresentationMode = user.uid === 'presentation-user';
 
   useEffect(() => {
+    if (isPresentationMode) {
+      setProfiles(readLocalProfiles(user.uid));
+      return;
+    }
+
     const q = user.role === NazarickRole.MOMONGA 
       ? collection(db, 'profiles')
       : query(collection(db, 'profiles'), where('ownerId', '==', user.uid));
@@ -33,7 +84,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
       handleFirestoreError(error, OperationType.LIST, 'profiles');
     });
     return unsub;
-  }, [user.uid, user.role]);
+  }, [isPresentationMode, user.uid, user.role]);
 
   const handleSelect = (profile: Profile) => {
     onSelect(profile);
@@ -43,6 +94,22 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
     e.preventDefault();
     const profilesPath = 'profiles';
     try {
+      if (isPresentationMode) {
+        const profile: Profile = {
+          ...newProfile,
+          id: `local-${Date.now()}`,
+          ownerId: user.uid,
+          socialAccounts: {},
+          createdAt: new Date().toISOString()
+        };
+        const nextProfiles = [...profiles, profile];
+        setProfiles(nextProfiles);
+        writeLocalProfiles(nextProfiles);
+        setIsCreating(false);
+        setNewProfile({ name: '', niche: '', objective: '' });
+        return;
+      }
+
       const profileRef = doc(collection(db, profilesPath));
       await setDoc(profileRef, {
         ...newProfile,
@@ -69,6 +136,16 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
     e.preventDefault();
     if (!editingProfile) return;
     try {
+      if (isPresentationMode) {
+        const nextProfiles = profiles.map((profile) => (
+          profile.id === editingProfile.id ? editingProfile : profile
+        ));
+        setProfiles(nextProfiles);
+        writeLocalProfiles(nextProfiles);
+        setEditingProfile(null);
+        return;
+      }
+
       await updateDoc(doc(db, 'profiles', editingProfile.id), { ...editingProfile });
       setEditingProfile(null);
     } catch (error) {
@@ -77,8 +154,16 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
   };
 
   const handleDeleteProfile = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja apagar este domínio? Esta ação é irreversível.')) return;
+    if (!window.confirm('Tem certeza que deseja apagar este domÃ­nio? Esta aÃ§Ã£o Ã© irreversÃ­vel.')) return;
     try {
+      if (isPresentationMode) {
+        const nextProfiles = profiles.filter((profile) => profile.id !== id);
+        setProfiles(nextProfiles);
+        writeLocalProfiles(nextProfiles);
+        setEditingProfile(null);
+        return;
+      }
+
       await deleteDoc(doc(db, 'profiles', id));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `profiles/${id}`);
@@ -178,7 +263,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                       {profile.niche}
                     </p>
                     <p className={cn("text-[8px] font-medium uppercase tracking-[0.1em] opacity-40 line-clamp-1 group-hover:opacity-80 transition-opacity", isDarkMode ? "text-slate-500" : "text-slate-400")}>
-                      {profile.objective || 'Diretriz não definida'}
+                      {profile.objective || 'Diretriz nÃ£o definida'}
                     </p>
                   </div>
 
@@ -202,7 +287,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                 </motion.div>
               </div>
               <span className={cn("text-2xl font-black transition-colors uppercase tracking-[0.25em] leading-none mb-2 text-center", isDarkMode ? "text-white" : "text-slate-900")}>{profile.name}</span>
-              <span className={cn("text-[9px] font-black uppercase tracking-[0.4em] transition-colors", isDarkMode ? "text-indigo-500/50" : "text-slate-400")}>Nível Identificado</span>
+              <span className={cn("text-[9px] font-black uppercase tracking-[0.4em] transition-colors", isDarkMode ? "text-indigo-500/50" : "text-slate-400")}>NÃ­vel Identificado</span>
             </motion.div>
         ))}
 
@@ -287,7 +372,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                 isDarkMode ? "bg-slate-900 border-white/5" : "bg-white border-slate-200"
               )}
             >
-               <h2 className={cn("text-3xl font-black mb-8 tracking-tighter uppercase", isDarkMode ? "text-white" : "text-slate-900")}>Novo Domínio</h2>
+               <h2 className={cn("text-3xl font-black mb-8 tracking-tighter uppercase", isDarkMode ? "text-white" : "text-slate-900")}>Novo DomÃ­nio</h2>
                <form onSubmit={handleCreateProfile} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Codinome</label>
@@ -314,13 +399,13 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                         ? "bg-black/20 border-white/5 text-white focus:ring-indigo-500/30 placeholder:text-slate-700" 
                         : "bg-slate-50 border-slate-100 text-slate-900 focus:ring-indigo-600 placeholder:text-slate-300"
                     )}
-                    placeholder="Ex: Tecnologia, Finanças"
+                    placeholder="Ex: Tecnologia, FinanÃ§as"
                     value={newProfile.niche}
                     onChange={e => setNewProfile({...newProfile, niche: e.target.value})}
                   />
                 </div>
                 <div className="flex gap-4 pt-6">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition-colors uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20">Criar Domínio</button>
+                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition-colors uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20">Criar DomÃ­nio</button>
                   <button type="button" onClick={() => setIsCreating(false)} className={cn("flex-1 font-black py-4 rounded-2xl transition-colors uppercase tracking-widest text-[10px]", isDarkMode ? "bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-white" : "bg-slate-100 text-slate-400 hover:bg-slate-200")}>Cancelar</button>
                 </div>
                </form>
@@ -347,7 +432,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
               )}
             >
                <div className="flex justify-between items-center mb-8">
-                 <h2 className={cn("text-3xl font-black tracking-tighter uppercase", isDarkMode ? "text-white" : "text-slate-900")}>Ajustar Domínio</h2>
+                 <h2 className={cn("text-3xl font-black tracking-tighter uppercase", isDarkMode ? "text-white" : "text-slate-900")}>Ajustar DomÃ­nio</h2>
                  <button 
                   onClick={() => handleDeleteProfile(editingProfile.id)}
                   className={cn("p-3 rounded-2xl transition-colors", isDarkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-500 hover:bg-red-100")}
@@ -371,7 +456,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                   />
                 </div>
                 <div className="flex gap-4 pt-6">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition-colors uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20">Salvar Mudanças</button>
+                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition-colors uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20">Salvar MudanÃ§as</button>
                   <button type="button" onClick={() => setEditingProfile(null)} className={cn("flex-1 font-black py-4 rounded-2xl transition-colors uppercase tracking-widest text-[10px]", isDarkMode ? "bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-white" : "bg-slate-100 text-slate-400 hover:bg-slate-200")}>Descartar</button>
                 </div>
                </form>

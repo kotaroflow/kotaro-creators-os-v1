@@ -22,7 +22,7 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
           textSecondary: isDarkMode ? "text-[#C9A227]" : "text-[#8a5a12]",
           textHighlight: isDarkMode ? "text-[#ffea99]" : "text-[#5e4101]",
           glow: "shadow-[0_0_100px_rgba(201,162,39,0.3)]",
-          glowText: "drop-shadow-[0_2px_15px_rgba(201,162,39,0.6)]",
+          glowText: "",
           accent: "text-[#C9A227]",
           particle: "bg-[#C9A227]"
         };
@@ -35,23 +35,23 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
           textSecondary: isDarkMode ? "text-[#3b82f6]" : "text-[#1e3a8a]",
           textHighlight: isDarkMode ? "text-[#dbeafe]" : "text-[#1e40af]",
           glow: "shadow-[0_0_100px_rgba(59,130,246,0.3)]",
-          glowText: "drop-shadow-[0_2px_15px_rgba(59,130,246,0.5)]",
+          glowText: "",
           accent: "text-[#3b82f6]",
           particle: "bg-[#3b82f6]"
         };
       case CreatorFragment.MOMONGA:
       default:
         return {
-          bg: isDarkMode ? "from-[#05000a] via-[#12001c] to-[#05000a]" : "from-[#faf5ff] via-[#eadcf7] to-[#d4b9ed]",
-          border: "border-[#9333ea]/40",
-          ring: "ring-[#9333ea]/20",
+          bg: isDarkMode ? "from-[#05040A] via-[#1d1606] to-[#05040A]" : "from-[#fffaf0] via-[#f7e8ba] to-[#e7c86a]",
+          border: "border-[#D4AF37]/40",
+          ring: "ring-[#D4AF37]/20",
           textPrimary: isDarkMode ? "text-[#D4AF37]" : "text-[#A67C00]", // Dourado do título Momonga
-          textSecondary: isDarkMode ? "text-[#a855f7]" : "text-[#6b21a8]",
+          textSecondary: isDarkMode ? "text-[#f3d277]" : "text-[#7c4f00]",
           textHighlight: isDarkMode ? "text-[#f5d97f]" : "text-[#4d3900]",
-          glow: "shadow-[0_0_100px_rgba(147,51,234,0.3)]",
-          glowText: "drop-shadow-[0_2px_15px_rgba(147,51,234,0.6)]",
-          accent: "text-[#9333ea]",
-          particle: "bg-[#9333ea]"
+          glow: "shadow-[0_24px_70px_rgba(120,84,12,0.20)]",
+          glowText: "",
+          accent: "text-[#D4AF37]",
+          particle: "bg-[#D4AF37]"
         };
     }
   };
@@ -60,8 +60,7 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
 
   return (
     <div className="w-full relative group">
-      {/* Glow extra that bleeds slightly out */}
-      <div className={cn("absolute inset-0 rounded-[3rem] blur-xl opacity-30 mix-blend-screen transition-all duration-1000", theme.particle)} />
+      <div className={cn("absolute inset-x-8 top-0 h-px opacity-70 transition-all duration-1000", theme.particle)} />
       
       <motion.div
         key={activeFragment || 'default'}
@@ -69,7 +68,7 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
         className={cn(
-          "relative overflow-hidden rounded-[3rem] w-full border backdrop-blur-2xl transition-all duration-1000 ring-1",
+          "relative overflow-hidden rounded-[3rem] w-full border transition-all duration-1000 ring-1",
           "bg-gradient-to-br",
           theme.bg,
           theme.border,
@@ -93,7 +92,7 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
           <div className="flex flex-col justify-between flex-1 gap-10">
             {/* Header */}
             <div className="flex flex-col items-start gap-4">
-               <div className="relative inline-flex px-4 py-1.5 rounded-full border border-current bg-current/10 backdrop-blur-md overflow-hidden">
+               <div className="relative inline-flex px-4 py-1.5 rounded-full border border-current bg-current/10 glass-control overflow-hidden">
                  <div className="absolute -inset-1 opacity-40 bg-gradient-to-r from-transparent via-white to-transparent skew-x-12 animate-pulse" />
                  <span className={cn("text-[9px] font-black uppercase tracking-[0.4em] relative z-10", theme.textHighlight)}>Admin Real</span>
                </div>
@@ -104,7 +103,7 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
             
             {/* Badges/Seals */}
             <div className="flex flex-col gap-4">
-               <div className={cn("flex items-center gap-3 w-max p-3 px-5 rounded-2xl bg-black/20 dark:bg-black/60 border backdrop-blur-md", theme.border)}>
+               <div className={cn("flex items-center gap-3 w-max p-3 px-5 rounded-2xl bg-black/20 dark:bg-black/60 border glass-control", theme.border)}>
                  <Shield className={cn("w-4 h-4", theme.textHighlight)} />
                  <span className={cn("text-xs md:text-sm font-bold tracking-widest uppercase", theme.textSecondary)}>Selo Ainz Ooal Gown</span>
                </div>
@@ -113,8 +112,7 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
 
           {/* Center Column - Yggdrasil Core and Infinity */}
           <div className="flex flex-col items-center justify-center flex-1 relative min-h-[300px]">
-             {/* Center Glow */}
-             <div className={cn("absolute inset-0 blur-[60px] opacity-40 mix-blend-screen transition-opacity duration-700 w-full h-full rounded-full", theme.particle)} />
+             <div className={cn("absolute inset-x-12 top-1/2 h-px opacity-60 transition-opacity duration-700", theme.particle)} />
              
              {/* Runic Orbits */}
              <motion.div 
@@ -132,7 +130,7 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
                 <span className={cn("text-[12px] md:text-[14px] font-black uppercase tracking-[0.5em] mb-2", theme.textSecondary, theme.glowText)}>
                   Level
                 </span>
-                <span className={cn("text-[100px] md:text-[140px] leading-[0.8] font-bold select-none", theme.textPrimary, theme.glowText)} style={{ filter: 'drop-shadow(0px 10px 20px rgba(0,0,0,0.8))' }}>
+                <span className={cn("text-[100px] md:text-[140px] leading-[0.8] font-bold select-none", theme.textPrimary, theme.glowText)}>
                   ∞
                 </span>
                 
@@ -144,18 +142,18 @@ export default function AdminSupremeDashboardCard({ user, isDarkMode, activeFrag
 
           {/* Right Column - System Authority & Stats */}
           <div className="flex flex-col justify-end flex-1 gap-4">
-             <div className={cn("flex flex-col p-5 rounded-2xl bg-black/20 dark:bg-black/60 border backdrop-blur-md relative overflow-hidden", theme.border)}>
+             <div className={cn("flex flex-col p-5 rounded-2xl bg-black/20 dark:bg-black/60 border glass-control relative overflow-hidden", theme.border)}>
                <div className={cn("absolute inset-0 opacity-15 bg-gradient-to-r from-transparent via-current to-transparent", theme.particle)} />
                <span className={cn("text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-80", theme.textPrimary)}>Governância Systema</span>
                <span className={cn("text-sm md:text-base font-bold tracking-widest", theme.textSecondary)}>Permissões Absolutas</span>
              </div>
 
-             <div className={cn("flex flex-col p-5 rounded-2xl bg-black/20 dark:bg-black/60 border backdrop-blur-md", theme.border)}>
+             <div className={cn("flex flex-col p-5 rounded-2xl bg-black/20 dark:bg-black/60 border glass-control", theme.border)}>
                <span className={cn("text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-80", theme.textPrimary)}>Desempenho</span>
                <span className={cn("text-sm md:text-base font-bold tracking-widest", theme.textSecondary)}>XP: Não Limitado</span>
              </div>
 
-             <div className={cn("flex flex-col p-5 rounded-2xl bg-black/20 dark:bg-black/60 border backdrop-blur-md relative overflow-hidden mt-2", theme.border)}>
+             <div className={cn("flex flex-col p-5 rounded-2xl bg-black/20 dark:bg-black/60 border glass-control relative overflow-hidden mt-2", theme.border)}>
                <div className="absolute top-0 right-4 w-2 h-[1px] bg-red-500/80 shadow-[0_0_5px_rgba(239,68,68,0.8)]" />
                <div className="absolute top-1/2 right-4 -translate-y-1/2 w-4 h-4 rounded-full bg-red-900/40 border border-red-500/30 flex items-center justify-center">
                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)]" />

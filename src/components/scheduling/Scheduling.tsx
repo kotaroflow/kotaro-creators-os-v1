@@ -139,7 +139,7 @@ export default function Scheduling({ user, profile, isDarkMode, currentFragment 
         <div className="lg:col-span-2">
            <div className={cn(
              "p-8 border rounded-[32px] transition-all duration-500",
-             isDarkMode ? "bg-slate-900 shadow-2xl" : "bg-white shadow-sm",
+             isDarkMode ? "glass-panel shadow-2xl" : "glass-panel-light shadow-sm",
              layoutTheme.border
            )}>
               <div className="flex items-center justify-between mb-8">
@@ -186,7 +186,7 @@ export default function Scheduling({ user, profile, isDarkMode, currentFragment 
 
         <div className="space-y-6">
            {needsAuth ? (
-             <div className={cn("p-8 border rounded-3xl transition-all duration-500 text-center", isDarkMode ? "bg-slate-900" : "bg-white", layoutTheme.border)}>
+             <div className={cn("p-8 border rounded-3xl transition-all duration-500 text-center", isDarkMode ? "glass-panel" : "glass-panel-light", layoutTheme.border)}>
                <CalendarIcon className={cn("w-12 h-12 mx-auto mb-4 opacity-50", layoutTheme.accentText)} />
                <h3 className={cn("font-black mb-2 uppercase text-[11px] tracking-widest transition-colors", layoutTheme.textPrimary)}>Google Calendar</h3>
                <p className={cn("text-[10px] mb-6", layoutTheme.textSecondary)}>Conecte seu calendário para sincronizar rituais e lançamentos diretamente com Nazarick.</p>
@@ -203,12 +203,12 @@ export default function Scheduling({ user, profile, isDarkMode, currentFragment 
                      </svg>
                    </div>
                    <span className="gsi-material-button-contents">Sign in with Google</span>
-                   <span style="display: none;">Sign in with Google</span>
+                   <span style={{ display: 'none' }}>Sign in with Google</span>
                  </div>
                </button>
              </div>
            ) : (
-             <div className={cn("p-8 border rounded-3xl transition-all duration-500", isDarkMode ? "bg-slate-900" : "bg-white", layoutTheme.border)}>
+             <div className={cn("p-8 border rounded-3xl transition-all duration-500", isDarkMode ? "glass-panel" : "glass-panel-light", layoutTheme.border)}>
                <div className="flex items-center justify-between mb-8">
                  <h3 className={cn("font-black uppercase text-[10px] tracking-widest transition-colors", layoutTheme.textPrimary)}>Próximos Alertas</h3>
                  {nextEventCountdown && (

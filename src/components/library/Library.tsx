@@ -5,21 +5,31 @@ import { User, Profile, Content, OperationalMode } from '../../types';
 import { Library as LibraryIcon, FileText, Video, MessageSquare, Search, Filter, MoreVertical, Download, ExternalLink, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
+import { getLayoutTheme } from '../../lib/theme';
 
-export default function Library({ user, profile, isDarkMode }: { user: User, profile: Profile, isDarkMode?: boolean }) {
+export default function Library({ user, profile, isDarkMode, currentFragment = 'MOMONGA' }: { user: User, profile: Profile, isDarkMode?: boolean, currentFragment?: string }) {
   const [contents, setContents] = useState<Content[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'All' | 'Video' | 'Post' | 'Story'>('All');
 
   const isSimplified = user.operationalMode === OperationalMode.EASY || user.operationalMode === OperationalMode.NORMAL;
+  const isPresentationMode = user.uid === 'presentation-user';
+  const contentsStorageKey = `kotaro.presentation.contents.${profile.id}`;
+  const layoutTheme = getLayoutTheme(currentFragment, isDarkMode || false);
 
   useEffect(() => {
+    if (isPresentationMode) {
+      const saved = localStorage.getItem(contentsStorageKey);
+      setContents(saved ? JSON.parse(saved) : []);
+      return;
+    }
+
     const q = query(collection(db, 'profiles', profile.id, 'contents'));
     const unsub = onSnapshot(q, (snapshot) => {
       setContents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Content)));
     });
     return unsub;
-  }, [profile.id]);
+  }, [contentsStorageKey, isPresentationMode, profile.id]);
 
   const filteredContents = contents.filter(c => {
     const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -32,7 +42,7 @@ export default function Library({ user, profile, isDarkMode }: { user: User, pro
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       <div className={cn("flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8 transition-colors", isDarkMode ? "border-white/5" : "border-slate-200")}>
         <div className="flex items-center gap-4">
-          <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl transition-colors", isDarkMode ? "bg-indigo-600 text-white shadow-indigo-600/20" : "bg-slate-900 text-white shadow-slate-200")}>
+          <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl transition-colors text-white", layoutTheme.accentBg, layoutTheme.shadowGlow)}>
             <LibraryIcon className="w-8 h-8" />
           </div>
           <div>
@@ -54,14 +64,14 @@ export default function Library({ user, profile, isDarkMode }: { user: User, pro
                   type="text"
                   placeholder="Buscar manifestações..."
                   className={cn(
-                    "pl-12 pr-4 py-3 border rounded-2xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all w-64 uppercase tracking-widest font-bold",
+                    "pl-12 pr-4 py-3 border rounded-2xl text-xs focus:outline-none focus:ring-1 transition-all w-64 uppercase tracking-widest font-bold glass-control",
                     isDarkMode ? "bg-black/40 border-white/5 text-white placeholder:text-slate-700" : "bg-white border-slate-200 text-slate-900"
                   )}
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
-              <button className={cn("p-3 border rounded-2xl transition-all", isDarkMode ? "bg-slate-900 border-white/5 text-slate-500 hover:text-white" : "bg-white border-slate-200 text-slate-400 hover:text-indigo-600")}>
+              <button className={cn("p-3 border rounded-2xl transition-all", isDarkMode ? "bg-slate-900 border-white/5 text-slate-500 hover:text-white" : "bg-white border-slate-200 text-slate-400", layoutTheme.accentTextHover)}>
                 <Filter className="w-5 h-5" />
               </button>
             </>
@@ -77,7 +87,7 @@ export default function Library({ user, profile, isDarkMode }: { user: User, pro
             className={cn(
               "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border",
               activeFilter === f 
-                ? "bg-indigo-600 text-white border-indigo-500 shadow-xl shadow-indigo-600/20" 
+                ? cn("text-white shadow-xl", layoutTheme.accentBg, layoutTheme.shadowGlow) 
                 : isDarkMode ? "bg-slate-900 border-white/5 text-slate-500 hover:text-slate-300" : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
             )}
           >
@@ -98,7 +108,7 @@ export default function Library({ user, profile, isDarkMode }: { user: User, pro
                 exit={{ opacity: 0, scale: 0.95 }}
                 className={cn(
                   "p-8 flex flex-col border transition-all duration-500 group rounded-3xl",
-                  isDarkMode ? "bg-slate-900 border-white/5 shadow-black/40 shadow-2xl hover:border-indigo-500/30" : "bg-white border-slate-200 shadow-sm hover:border-indigo-200"
+                  isDarkMode ? cn("glass-panel border-white/5 shadow-black/30 shadow-2xl", layoutTheme.borderHoverBase) : cn("glass-panel-light border-slate-200/60 shadow-sm", layoutTheme.borderHoverBase)
                 )}
               >
                 <div className="flex justify-between items-start mb-8">
@@ -119,7 +129,7 @@ export default function Library({ user, profile, isDarkMode }: { user: User, pro
                   )}
                 </div>
                 
-                <h3 className={cn("font-black mb-2 truncate transition-colors uppercase text-[11px] tracking-widest", isDarkMode ? "text-white group-hover:text-indigo-400" : "text-slate-800 group-hover:text-indigo-600")}>{content.title}</h3>
+                <h3 className={cn("font-black mb-2 truncate transition-colors uppercase text-[11px] tracking-widest", isDarkMode ? "text-white" : "text-slate-800", layoutTheme.accentTextGroupHover)}>{content.title}</h3>
                 <div className="flex items-center gap-3 mb-6">
                   <span className={cn(
                     "text-[8px] font-black uppercase px-2 py-0.5 rounded-md",

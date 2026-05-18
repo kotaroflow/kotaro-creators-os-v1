@@ -76,11 +76,11 @@ export default function AdminPanel() {
     <div className="space-y-10 animate-in fade-in duration-500 pb-20">
       {/* Header Estilizado: Grande Tumba de Nazarick */}
       <div className="relative overflow-hidden rounded-3xl bg-slate-900 p-10 text-white border border-white/10 shadow-2xl">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[100px] rounded-full" />
+        <div className="absolute inset-x-10 top-0 h-px bg-amber-400/60" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
-              <Shield className="w-10 h-10 text-indigo-400" />
+            <div className="w-20 h-20 bg-white/10 glass-control rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
+              <Shield className="w-10 h-10 text-amber-300" />
             </div>
             <div>
               <h1 className="font-bold text-4xl tracking-tighter uppercase">Grande Tumba de Nazarick</h1>
@@ -88,7 +88,7 @@ export default function AdminPanel() {
             </div>
           </div>
           
-          <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-sm self-start md:self-center overflow-x-auto">
+          <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/10 glass-control self-start md:self-center overflow-x-auto">
             <button 
               onClick={() => setActiveTab('comando')}
               className={cn(

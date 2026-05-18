@@ -43,10 +43,10 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
       subtitle: 'Autoridade & Regras',
       description: 'Focado em configurações, cargos, regras, World Items, sistema de evolução, Rank, e segurança estrutural.',
       icon: Shield,
-      color: 'from-purple-500 to-fuchsia-700',
-      lightBg: 'bg-purple-50 border-purple-200',
-      darkBg: 'bg-purple-950/30 border-purple-500/20',
-      activeBorder: 'border-purple-500 ring-4 ring-purple-500/20'
+      color: 'from-amber-300 to-yellow-700',
+      lightBg: 'bg-amber-50 border-amber-200',
+      darkBg: 'bg-amber-950/25 border-amber-400/25',
+      activeBorder: 'border-amber-400 ring-4 ring-amber-400/20'
     }
   ];
 
@@ -54,37 +54,27 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
     switch (activeFragment) {
       case CreatorFragment.MATHEUS: return "bg-amber-500";
       case CreatorFragment.KOTARO: return "bg-blue-500";
-      case CreatorFragment.MOMONGA: return "bg-purple-500";
+      case CreatorFragment.MOMONGA: return "bg-amber-500";
       default: return "bg-indigo-500";
     }
   };
 
-  const getThemeGlow = () => {
-    switch (activeFragment) {
-      case CreatorFragment.MATHEUS: return "bg-amber-500/10";
-      case CreatorFragment.KOTARO: return "bg-blue-500/10";
-      case CreatorFragment.MOMONGA: return "bg-purple-500/10";
-      default: return "bg-indigo-500/10";
-    }
-  };
-
   const themeColor = getThemeColor();
-  const themeGlow = getThemeGlow();
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/45">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className={cn(
           "w-full max-w-5xl rounded-3xl border overflow-hidden shadow-2xl flex flex-col",
-          isDarkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-200"
+          isDarkMode ? "glass-panel border-white/10" : "glass-panel-light border-slate-200/70"
         )}
       >
-        <div className={cn("p-8 relative overflow-hidden", isDarkMode ? "bg-slate-950 border-white/10" : "bg-slate-50 border-slate-200")}>
-           <div className={cn("absolute top-0 right-0 w-96 h-96 blur-[100px] rounded-full pointer-events-none transition-colors", themeGlow)} />
-           <div className={cn("absolute bottom-0 left-0 w-64 h-64 blur-[80px] rounded-full pointer-events-none transition-colors", themeGlow)} />
+        <div className={cn("p-8 relative overflow-hidden", isDarkMode ? "bg-white/5 border-white/10" : "bg-white/35 border-white/50")}>
+           <div className={cn("absolute inset-x-0 top-0 h-px pointer-events-none transition-colors", themeColor)} />
+           <div className={cn("absolute inset-x-10 bottom-0 h-px pointer-events-none transition-colors opacity-40", themeColor)} />
            
            <div className="relative z-10 flex justify-between items-start mb-8">
              <div>
@@ -143,10 +133,7 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
                       isActive ? frag.activeBorder + " shadow-xl scale-[1.02]" : "hover:border-slate-400 hover:-translate-y-1"
                     )}
                   >
-                    <div className={cn(
-                      "absolute top-0 right-0 w-32 h-32 blur-3xl opacity-20 group-hover:opacity-40 transition-opacity bg-gradient-to-br",
-                      frag.color
-                    )} />
+                    <div className={cn("absolute inset-x-4 top-0 h-px opacity-40 transition-opacity bg-gradient-to-r", frag.color)} />
                     
                     <div className="relative z-10 flex flex-col h-full">
                       <div className={cn(

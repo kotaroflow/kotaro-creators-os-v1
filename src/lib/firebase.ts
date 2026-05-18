@@ -1,5 +1,13 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  onAuthStateChanged,
+  User,
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -12,13 +20,40 @@ provider.addScope('https://www.googleapis.com/auth/calendar');
 
 let isSigningIn = false;
 let cachedAccessToken: string | null = null;
+let redirectResultPromise: Promise<{ user: User; accessToken: string | null } | null> | null = null;
+
+const isPopupBlocked = (error: any) => (
+  error?.code === 'auth/popup-blocked' ||
+  error?.code === 'auth/popup-closed-by-user' ||
+  error?.code === 'auth/cancelled-popup-request'
+);
+
+export const completeRedirectSignIn = async (): Promise<{ user: User; accessToken: string | null } | null> => {
+  if (!redirectResultPromise) {
+    redirectResultPromise = getRedirectResult(auth).then((result) => {
+      if (!result) return null;
+
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      cachedAccessToken = credential?.accessToken || null;
+      return { user: result.user, accessToken: cachedAccessToken };
+    });
+  }
+
+  return redirectResultPromise;
+};
 
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  return onAuthStateChanged(auth, (user: User | null) => {
+  completeRedirectSignIn().catch((error) => {
+    console.error('Redirect sign in error:', error);
+  });
+
+  return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
+      await completeRedirectSignIn().catch(() => null);
+
       if (cachedAccessToken) {
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
       } else if (!isSigningIn) {
@@ -45,6 +80,11 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('Sign in error:', error);
+    if (isPopupBlocked(error)) {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+
     throw error;
   } finally {
     isSigningIn = false;

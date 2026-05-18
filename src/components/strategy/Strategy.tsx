@@ -46,7 +46,7 @@ export default function Strategy({ user, profile, isDarkMode, currentFragment = 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className={cn(
           "p-10 border rounded-3xl transition-all duration-500",
-          isDarkMode ? "bg-slate-900 shadow-2xl" : "bg-white shadow-sm",
+          isDarkMode ? "glass-panel shadow-2xl" : "glass-panel-light shadow-sm",
           layoutTheme.border
         )}>
           <h3 className={cn("font-black mb-8 flex items-center gap-3 uppercase text-[11px] tracking-widest transition-colors", layoutTheme.textPrimary)}>
@@ -72,9 +72,9 @@ export default function Strategy({ user, profile, isDarkMode, currentFragment = 
 
         <div className={cn("p-10 text-white border-none shadow-2xl rounded-3xl relative overflow-hidden group", layoutTheme.accentBg, layoutTheme.shadowGlow)}>
           <motion.div 
-            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.4, 0.3] }}
+            animate={{ opacity: [0.25, 0.55, 0.25] }}
             transition={{ duration: 10, repeat: Infinity }}
-            className="absolute -top-20 -right-20 w-64 h-64 bg-white/20 rounded-full blur-[80px] pointer-events-none"
+            className="absolute inset-x-8 top-0 h-px bg-white/50 pointer-events-none"
           />
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-8">
@@ -83,8 +83,8 @@ export default function Strategy({ user, profile, isDarkMode, currentFragment = 
                 {isHighLevel ? 'Otimizador GAIA — Protocolo Supremo' : 'Otimizador GAIA'}
               </h3>
             </div>
-            <p className="text-2xl font-bold mb-8 leading-tight tracking-tight text-white drop-shadow-md">"Seu nicho ({profile.niche}) está em alta nos domingos à noite."</p>
-            <div className="p-8 bg-white/10 rounded-3xl border border-white/20 backdrop-blur-md mb-10 shadow-inner">
+            <p className="text-2xl font-bold mb-8 leading-tight tracking-tight text-white">"Seu nicho ({profile.niche}) está em alta nos domingos à noite."</p>
+            <div className="p-8 bg-white/10 rounded-3xl border border-white/20 glass-control mb-10 shadow-inner">
                <p className="text-[10px] uppercase font-black tracking-widest mb-3 opacity-70 text-white/80">
                  {isSupreme ? 'Sinal Supra-Ajustado' : 'Sinergia Sugerida'}
                </p>

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { User, NazarickRole, OperationalMode, CreatorFragment } from '../../types';
-import { Shield, Settings, X, RefreshCw, BarChart, Eye, Infinity as InfinityIcon, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Shield, X, RefreshCw, BarChart, Eye, ArrowRight, Layers } from 'lucide-react';
+import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
+import { getLayoutTheme } from '../../lib/theme';
 
 import { SimulationState } from '../../types';
 
@@ -26,6 +27,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
   });
   
   const [draftFragment, setDraftFragment] = useState<CreatorFragment>(simulationState.isActive && simulationState.simulatedFragment ? simulationState.simulatedFragment : CreatorFragment.MOMONGA);
+  const modalTheme = getLayoutTheme(draftFragment, isDarkMode);
 
   if (realUser.role !== NazarickRole.MOMONGA) return null;
 
@@ -41,22 +43,22 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/45">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className={cn(
-          "w-full max-w-2xl rounded-3xl border overflow-hidden shadow-2xl flex flex-col max-h-[90vh]",
-          isDarkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-200"
+          "w-full max-w-3xl rounded-3xl border overflow-hidden shadow-2xl flex flex-col max-h-[90vh]",
+          isDarkMode ? "glass-panel border-white/10" : "glass-panel-light border-slate-200/70"
         )}
       >
-        <div className={cn("p-6 border-b relative overflow-hidden", isDarkMode ? "bg-slate-950 border-white/10" : "bg-slate-50 border-slate-200")}>
-           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
+        <div className={cn("p-6 border-b relative overflow-hidden", isDarkMode ? "bg-white/5 border-white/10" : "bg-white/35 border-white/50")}>
+           <div className={cn("absolute inset-x-0 top-0 h-px", modalTheme.accentBg)} />
            <div className="relative z-10 flex justify-between items-start">
              <div>
                <div className="flex items-center gap-2 mb-2">
-                 <Shield className="w-5 h-5 text-indigo-500" />
+                 <Shield className={cn("w-5 h-5", modalTheme.accentText)} />
                  <h2 className={cn("font-black text-xl tracking-tighter uppercase", isDarkMode ? "text-white" : "text-slate-900")}>
                    Simulador dos Seres Supremos
                  </h2>
@@ -83,6 +85,33 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
 
           <div className="h-px bg-slate-500/20 w-full" />
 
+          <div>
+            <label className="text-[10px] uppercase font-black tracking-widest text-slate-500 mb-3 block">Fragmento Simulado</label>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { id: CreatorFragment.MATHEUS, label: 'Matheus', tone: 'amber' },
+                { id: CreatorFragment.KOTARO, label: 'Kotaro', tone: 'blue' },
+                { id: CreatorFragment.MOMONGA, label: 'Momonga', tone: 'purple' }
+              ].map((fragment) => {
+                const active = draftFragment === fragment.id;
+                return (
+                  <button
+                    key={fragment.id}
+                    type="button"
+                    onClick={() => setDraftFragment(fragment.id)}
+                    className={cn(
+                      "glass-control rounded-2xl px-4 py-4 text-left transition-all border",
+                      active ? cn("text-white shadow-lg", modalTheme.accentBg, modalTheme.shadowGlow) : isDarkMode ? "border-white/10 text-slate-400 hover:text-white" : "border-white/60 text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    <Layers className="w-4 h-4 mb-3" />
+                    <span className="block text-[10px] font-black uppercase tracking-widest">{fragment.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="text-[10px] uppercase font-black tracking-widest text-slate-500 mb-2 block">Cargo / Função</label>
@@ -90,8 +119,8 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 value={draft.role || ''}
                 onChange={(e) => setDraft(prev => ({ ...prev, role: e.target.value as NazarickRole }))}
                 className={cn(
-                  "w-full px-4 py-3 rounded-xl text-sm font-bold border outline-none transition-all",
-                  isDarkMode ? "bg-slate-800 border-white/10 text-white focus:border-indigo-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500"
+                  "w-full px-4 py-3 rounded-xl text-sm font-bold border outline-none transition-all glass-control",
+                  isDarkMode ? cn("text-white", modalTheme.borderHoverBase) : cn("text-slate-900", modalTheme.borderHoverBase)
                 )}
               >
                 {Object.values(NazarickRole).filter(r => r !== NazarickRole.MOMONGA).map(r => (
@@ -109,7 +138,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                   onChange={(e) => setDraft(prev => ({ ...prev, level: parseInt(e.target.value) || 1 }))}
                   className={cn(
                     "w-full px-4 py-3 rounded-xl text-sm font-bold border outline-none transition-all font-mono",
-                    isDarkMode ? "bg-slate-800 border-white/10 text-white focus:border-indigo-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500"
+                    isDarkMode ? cn("bg-white/10 border-white/10 text-white", modalTheme.borderHoverBase) : cn("bg-white/60 border-white/70 text-slate-900", modalTheme.borderHoverBase)
                   )}
                 />
               </div>
@@ -124,7 +153,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 onChange={(e) => setDraft(prev => ({ ...prev, rank: e.target.value }))}
                 className={cn(
                   "w-full px-4 py-3 rounded-xl text-sm font-bold border outline-none transition-all font-mono",
-                  isDarkMode ? "bg-slate-800 border-white/10 text-white focus:border-indigo-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500"
+                  isDarkMode ? cn("bg-white/10 border-white/10 text-white", modalTheme.borderHoverBase) : cn("bg-white/60 border-white/70 text-slate-900", modalTheme.borderHoverBase)
                 )}
               >
                 {['F', 'E-', 'E', 'E+', 'D-', 'D', 'D+', 'C-', 'C', 'C+', 'B-', 'B', 'B+', 'A-', 'A', 'A+', 'S', 'SS', 'SSS'].map(r => (
@@ -140,14 +169,14 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 onChange={(e) => setDraft(prev => ({ ...prev, xp: parseInt(e.target.value) || 0 }))}
                 className={cn(
                   "w-full px-4 py-3 rounded-xl text-sm font-bold border outline-none transition-all font-mono",
-                  isDarkMode ? "bg-slate-800 border-white/10 text-white focus:border-indigo-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500"
+                  isDarkMode ? cn("bg-white/10 border-white/10 text-white", modalTheme.borderHoverBase) : cn("bg-white/60 border-white/70 text-slate-900", modalTheme.borderHoverBase)
                 )}
               />
             </div>
           </div>
           
-          <div className={cn("p-4 rounded-xl border flex items-center gap-4", isDarkMode ? "bg-white/5 border-white/10" : "bg-indigo-50 border-indigo-100")}>
-             <Eye className={cn("w-6 h-6", isDarkMode ? "text-indigo-400" : "text-indigo-600")} />
+          <div className={cn("p-4 rounded-xl border flex items-center gap-4 glass-control", isDarkMode ? "bg-white/5 border-white/10" : "bg-white/45 border-white/70")}>
+             <Eye className={cn("w-6 h-6", modalTheme.accentText)} />
              <div>
                 <p className={cn("text-xs font-bold", isDarkMode ? "text-white" : "text-slate-900")}>Modo Admin / Testador Oficial</p>
                 <p className="text-[10px] text-slate-500 mt-0.5">Ativa a interface especial para testar permissões, botões e restrições pelo perfil escolhido.</p>
@@ -155,7 +184,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
           </div>
         </div>
 
-        <div className={cn("p-6 border-t flex flex-col md:flex-row items-center justify-between gap-4", isDarkMode ? "bg-slate-950 border-white/10" : "bg-slate-50 border-slate-200")}>
+        <div className={cn("p-6 border-t flex flex-col md:flex-row items-center justify-between gap-4", isDarkMode ? "bg-white/5 border-white/10" : "bg-white/35 border-white/50")}>
           <div className="flex items-center gap-2">
              <button
                onClick={onDiscard}
@@ -178,8 +207,11 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                Comparar Cenários
              </button>
              <button
-               onClick={() => onStartSimulation(draft, draftFragment)}
-               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30"
+               onClick={() => {
+                 onStartSimulation(draft, draftFragment);
+                 onClose();
+               }}
+               className={cn("flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-black uppercase tracking-widest transition-colors shadow-lg", modalTheme.accentBg, modalTheme.shadowGlow)}
              >
                Ativar Simulação
                <ArrowRight className="w-4 h-4" />

@@ -25,17 +25,13 @@ const getRankIcon = (rawRank: string) => {
 const SupremeStaffIcon = (props: any) => (
   <svg {...props} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <filter id="staff-glow" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="1.5" result="blur" />
-        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-      </filter>
       <linearGradient id="gold-grad" x1="24" y1="6" x2="24" y2="44" gradientUnits="userSpaceOnUse">
         <stop offset="0%" stopColor="#FFF2AD" />
         <stop offset="50%" stopColor="#FFD700" />
         <stop offset="100%" stopColor="#B8860B" />
       </linearGradient>
     </defs>
-    <g filter="url(#staff-glow)">
+    <g>
       <motion.path 
         initial={{ pathLength: 0 }}
         animate={{ pathLength: 1 }}
@@ -61,7 +57,7 @@ const SupremeStaffIcon = (props: any) => (
           transition={{ duration: 2 + i * 0.2, repeat: Infinity }}
           cx={gem.cx} cy={gem.cy} r="2.5" 
           fill={gem.color} 
-          className="filter drop-shadow-[0_0_2px_rgba(255,255,255,0.5)]"
+          className="opacity-90"
         />
       ))}
     </g>
@@ -184,9 +180,9 @@ function RankLetter({ char, index, rank, isDarkMode, themeAccent }: { char: stri
       className={cn(
         "inline-block relative px-1 font-black cursor-default select-none group/letter",
         isSSS 
-          ? (isDarkMode ? "text-white drop-shadow-[0_0_25px_rgba(255,255,255,0.9)] italic" : (themeAccent?.text || "text-indigo-600") + " drop-shadow-[0_0_25px_rgba(79,70,229,0.5)] italic") 
+          ? (isDarkMode ? "text-white italic" : (themeAccent?.text || "text-indigo-600") + " italic") 
           : isHigh 
-            ? (isDarkMode ? "text-indigo-100 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" : "text-indigo-900 drop-shadow-[0_0_15px_rgba(79,70,229,0.3)]") 
+            ? (isDarkMode ? "text-indigo-100" : "text-indigo-900") 
             : (isDarkMode ? "text-white/90" : "text-slate-800")
       )}
     >
@@ -195,9 +191,8 @@ function RankLetter({ char, index, rank, isDarkMode, themeAccent }: { char: stri
       {/* Anime Aura Effect */}
       <motion.div
         animate={{ 
-          opacity: isHigh ? [0.1, 0.3, 0.1] : 0,
           scale: isHigh ? [1, 1.1, 1] : 1,
-          filter: isHigh ? ["blur(8px)", "blur(12px)", "blur(8px)"] : "none"
+          opacity: isHigh ? [0.16, 0.32, 0.16] : 0
         }}
         transition={{ duration: 3, repeat: Infinity }}
         className={cn(
@@ -221,7 +216,7 @@ function RankLetter({ char, index, rank, isDarkMode, themeAccent }: { char: stri
           transition={{ duration: 2, repeat: Infinity, delay: index * 0.3 }}
           className="absolute -top-3 -right-3 pointer-events-none"
         >
-          <Sparkles className="w-5 h-5 text-yellow-300/80 filter blur-[0.5px]" />
+          <Sparkles className="w-5 h-5 text-yellow-300/80" />
         </motion.div>
       )}
     </motion.span>
@@ -396,20 +391,20 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
 
   const themeColors: { [key: string]: any } = {
     [CreatorFragment.MOMONGA]: {
-      bg: 'bg-indigo-600',
-      bgHover: 'hover:bg-indigo-500',
-      text: 'text-indigo-600',
-      textLight: 'text-indigo-400',
-      heroBgLight: 'from-indigo-600 via-purple-600 to-indigo-700',
-      heroBgDark: 'from-[#05040A] via-indigo-950/40 to-[#080612]',
-      glow: 'bg-indigo-500/30 dark:bg-indigo-500/20',
-      borderHoverDark: 'hover:border-indigo-500/30',
-      borderHoverLight: 'hover:border-indigo-600/20',
-      textHover: 'hover:text-indigo-600',
-      borderHoverBtnDark: 'hover:border-indigo-500',
-      borderHoverBtnLight: 'hover:border-indigo-600',
-      groupTextHover: 'group-hover:text-indigo-600',
-      xpText: 'text-indigo-500'
+      bg: 'bg-amber-600',
+      bgHover: 'hover:bg-amber-500',
+      text: 'text-amber-600',
+      textLight: 'text-amber-300',
+      heroBgLight: 'from-amber-500 via-yellow-600 to-slate-900',
+      heroBgDark: 'from-[#05040A] via-[#1d1606] to-[#090704]',
+      glow: 'bg-amber-500/20 dark:bg-amber-500/12',
+      borderHoverDark: 'hover:border-amber-400/30',
+      borderHoverLight: 'hover:border-amber-600/20',
+      textHover: 'hover:text-amber-600',
+      borderHoverBtnDark: 'hover:border-amber-400',
+      borderHoverBtnLight: 'hover:border-amber-600',
+      groupTextHover: 'group-hover:text-amber-600',
+      xpText: 'text-amber-500'
     },
     [CreatorFragment.KOTARO]: {
       bg: 'bg-blue-600',
@@ -448,6 +443,26 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
 
   useEffect(() => {
     if (!user?.uid) return;
+    if (user.uid === 'presentation-user') {
+      setTasks([
+        {
+          id: 'demo-task-1',
+          title: 'Criar roteiro de apresentacao',
+          description: 'Montar uma narrativa curta para validar o produto.',
+          xpReward: 25,
+          status: 'Pending'
+        },
+        {
+          id: 'demo-task-2',
+          title: 'Organizar biblioteca inicial',
+          description: 'Salvar os primeiros ativos criados pela IA.',
+          xpReward: 15,
+          status: 'In_Progress'
+        }
+      ]);
+      return;
+    }
+
     const q = query(collection(db, 'users', user.uid, 'orders'), where('status', '!=', 'Completed'));
     const unsub = onSnapshot(q, (snapshot) => {
       setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)));
@@ -456,6 +471,11 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
   }, [user?.uid]);
 
   useEffect(() => {
+    if (user?.uid === 'presentation-user') {
+      setAllUsers([user]);
+      return;
+    }
+
     if (internalHighLevel || user?.role === NazarickRole.MOMONGA) {
       const q = query(collection(db, 'users'));
       const unsub = onSnapshot(q, (snapshot) => {
@@ -467,6 +487,13 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
 
   const handleCompleteTask = async (task: Task) => {
     if (!user?.uid) return;
+    if (user.uid === 'presentation-user') {
+      setTasks((prev) => prev.map((item) => (
+        item.id === task.id ? { ...item, status: 'Completed' } : item
+      )));
+      return;
+    }
+
     await updateDoc(doc(db, 'users', user.uid, 'orders', task.id), { status: 'Completed' });
     await updateDoc(doc(db, 'users', user.uid), { 
       xp: increment(task.xpReward),
@@ -606,7 +633,7 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
                 rotate: [0, 10, 0]
               }}
               transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-              className={cn("absolute -top-40 -left-20 w-[800px] h-[800px] rounded-full blur-[160px]", themeAccent.glow)}
+              className={cn("absolute left-10 right-10 top-0 h-px", themeAccent.bg)}
             />
             {/* Pattern Overlay */}
             <div className={cn("absolute inset-0 mix-blend-overlay transition-opacity duration-1000", rankTheme.pattern)} />
@@ -619,7 +646,7 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <div className={cn(
-                  "px-3 py-1 bg-white/5 backdrop-blur-md rounded-lg border flex items-center gap-2 transition-all duration-700",
+                  "px-3 py-1 bg-white/5 glass-control rounded-lg border flex items-center gap-2 transition-all duration-700",
                   effectiveRank === 'SSS' ? "border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]" : "border-white/10"
                 )}>
                    <div className={cn(
@@ -634,7 +661,7 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
                   <motion.div 
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 text-white border border-white/20 text-[8px] font-black rounded-md tracking-tighter backdrop-blur-sm"
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 text-white border border-white/20 text-[8px] font-black rounded-md tracking-tighter glass-control"
                   >
                     <Crown className="w-2.5 h-2.5" />
                     AUTORIDADE_MÁXIMA
@@ -656,14 +683,14 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
                     whileHover={{ scale: 1.05, rotate: [-2, 2, 0] }}
                     className={cn(
                       "w-24 h-24 md:w-36 md:h-36 rounded-[2rem] flex items-center justify-center shrink-0 border relative overflow-hidden transition-all duration-700 shadow-2xl",
-                      isDarkMode ? "bg-black/40 border-white/10 backdrop-blur-md" : "bg-white/80 border-slate-200 backdrop-blur-md"
+                      isDarkMode ? "bg-black/40 border-white/10 glass-control" : "bg-white/80 border-slate-200 glass-control"
                     )}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-50" />
-                    <RankIcon className="w-16 h-16 md:w-24 md:h-24 relative z-10 filter drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
+                    <RankIcon className="w-16 h-16 md:w-24 md:h-24 relative z-10" />
                   </motion.div>
                   <h2 className={cn(
-                    "font-black text-7xl md:text-[8.5rem] tracking-tighter drop-shadow-2xl flex relative transition-all duration-700",
+                    "font-black text-7xl md:text-[8.5rem] tracking-tighter flex relative transition-all duration-700",
                     effectiveRank === 'SSS' ? "animate-pulse" : ""
                   )}>
                     {rankChars.map((char, i) => (
@@ -673,6 +700,7 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
                     <AnimatePresence>
                       {(effectiveRank === 'SSS' || effectiveRank === 'SS') && (
                         <motion.div
+                          key="legendary-status"
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 0.3, x: 0 }}
                           className="absolute -right-32 top-8 rotate-90 origin-left hidden md:block"
@@ -694,7 +722,7 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
                  </span>
                  <motion.span 
                   key={user?.xp}
-                  className={cn("drop-shadow-lg font-black tracking-widest", isDarkMode ? "text-white/90" : "text-slate-800")}
+                  className={cn("font-black tracking-widest", isDarkMode ? "text-white/90" : "text-slate-800")}
                  >
                   {((user?.xp || 0) % 100).toFixed(0)}% SINC_MODO
                  </motion.span>
@@ -719,7 +747,7 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
                    <motion.div 
                      animate={{ opacity: [0.2, 0.5, 0.2] }}
                      transition={{ duration: 2, repeat: Infinity }}
-                     className="absolute inset-0 bg-white/20 blur-[2px]"
+                     className="absolute inset-0 bg-white/20"
                    />
                  </motion.div>
                </div>
@@ -1093,8 +1121,8 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
               animate={{ opacity: isDarkMode ? [0.1, 0.25, 0.1] : [0.03, 0.08, 0.03] }}
               transition={{ duration: 4, repeat: Infinity }}
               className={cn(
-                "absolute inset-0 bg-indigo-500 blur-[80px]",
-                isDarkMode ? "opacity-10" : "opacity-10"
+                "absolute inset-x-0 top-0 h-px",
+                isDarkMode ? themeAccent.bg : themeAccent.bg
               )}
             />
             
@@ -1218,7 +1246,7 @@ function GuardianStatus({ roleName, users, isDarkMode }: { roleName: string, use
       
       {/* Users Popover */}
       {isMultiple && (
-        <div className="absolute top-[80%] right-0 mt-2 p-3 w-48 opacity-0 invisible group-hover/guardian:opacity-100 group-hover/guardian:visible group-hover/guardian:translate-y-2 transition-all duration-300 z-50 rounded-xl border shadow-xl backdrop-blur-xl pointer-events-none transform translate-y-0"
+        <div className="absolute top-[80%] right-0 mt-2 p-3 w-48 opacity-0 invisible group-hover/guardian:opacity-100 group-hover/guardian:visible group-hover/guardian:translate-y-2 transition-all duration-300 z-50 rounded-xl border shadow-xl glass-control pointer-events-none transform translate-y-0"
              style={{ 
                backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                borderColor: isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)'
