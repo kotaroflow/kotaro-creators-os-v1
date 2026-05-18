@@ -25,6 +25,10 @@ Use GitHub as the single source of truth when working with Codex, Google AI Stud
 
 Read the full workflow in [docs/SYNC_WORKFLOW.md](docs/SYNC_WORKFLOW.md).
 
+## OS Architecture Notes
+
+The base for backend migration, AI provider routing, cost control, storage strategy, and official platform data ingestion is documented in [docs/OS_INFRA_AI_DATA_ROADMAP.md](docs/OS_INFRA_AI_DATA_ROADMAP.md).
+
 To create a clean ZIP for Google AI Studio while GitHub is not connected:
 
 ```powershell
