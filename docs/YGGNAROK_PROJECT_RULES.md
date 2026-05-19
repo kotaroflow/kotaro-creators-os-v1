@@ -35,9 +35,10 @@ Regras obrigatorias para agentes:
 - um usuario pode cuidar de um ou mais perfis;
 - sempre checar vinculo usuario-perfil antes de sugerir leitura, escrita ou automacao;
 - fragmentos pertencem a conta suprema e sao foco operacional real;
-- simulacao pertence a conta suprema e e sandbox de teste;
+- simulacao pertence a conta suprema e roda no perfil fixo YGN Sandbox;
 - agentes nao podem misturar fragmento com simulacao;
-- em simulacao, agentes nao devem ler nem alterar MATHEUS, KOTARO ou MOMONGA.
+- em simulacao, agentes nao devem ler nem alterar MATHEUS, KOTARO ou MOMONGA;
+- YGN Sandbox nao deve carregar dois perfis reais ao mesmo tempo.
 
 Nao criar agora:
 

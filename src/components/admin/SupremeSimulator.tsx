@@ -46,9 +46,10 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/45">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        exit={{ opacity: 0, scale: 0.98, y: 10 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
         className={cn(
           "w-full max-w-3xl rounded-lg border overflow-hidden shadow-2xl flex flex-col max-h-[90vh]",
           isDarkMode ? "glass-panel border-white/10" : "glass-panel-light border-slate-200/70"
@@ -101,7 +102,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 value={draft.role || ''}
                 onChange={(e) => setDraft(prev => ({ ...prev, role: e.target.value as NazarickRole }))}
                 className={cn(
-                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-all glass-control",
+                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-colors glass-control",
                   isDarkMode ? cn("text-white", modalTheme.borderHoverBase) : cn("text-slate-900", modalTheme.borderHoverBase)
                 )}
               >
@@ -117,7 +118,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 value={draft.operationalMode || OperationalMode.NORMAL}
                 onChange={(e) => setDraft(prev => ({ ...prev, operationalMode: e.target.value as OperationalMode }))}
                 className={cn(
-                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-all glass-control",
+                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-colors glass-control",
                   isDarkMode ? cn("text-white", modalTheme.borderHoverBase) : cn("text-slate-900", modalTheme.borderHoverBase)
                 )}
               >
@@ -137,7 +138,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 value={draft.level === Infinity ? 9999 : draft.level || 1}
                 onChange={(e) => setDraft(prev => ({ ...prev, level: parseInt(e.target.value) || 1 }))}
                 className={cn(
-                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-all font-mono",
+                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-colors font-mono",
                   isDarkMode ? cn("bg-white/10 border-white/10 text-white", modalTheme.borderHoverBase) : cn("bg-white/60 border-white/70 text-slate-900", modalTheme.borderHoverBase)
                 )}
               />
@@ -148,7 +149,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 value={draft.rank || 'F'}
                 onChange={(e) => setDraft(prev => ({ ...prev, rank: e.target.value }))}
                 className={cn(
-                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-all font-mono",
+                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-colors font-mono",
                   isDarkMode ? cn("bg-white/10 border-white/10 text-white", modalTheme.borderHoverBase) : cn("bg-white/60 border-white/70 text-slate-900", modalTheme.borderHoverBase)
                 )}
               >
@@ -165,7 +166,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 value={draft.xp || 0}
                 onChange={(e) => setDraft(prev => ({ ...prev, xp: parseInt(e.target.value) || 0 }))}
                 className={cn(
-                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-all font-mono",
+                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-colors font-mono",
                   isDarkMode ? cn("bg-white/10 border-white/10 text-white", modalTheme.borderHoverBase) : cn("bg-white/60 border-white/70 text-slate-900", modalTheme.borderHoverBase)
                 )}
               />
@@ -180,7 +181,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 value={draft.karma || 0}
                 onChange={(e) => setDraft(prev => ({ ...prev, karma: parseInt(e.target.value) || 0 }))}
                 className={cn(
-                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-all font-mono",
+                  "w-full px-4 py-3 rounded-lg text-sm font-bold border outline-none transition-colors font-mono",
                   isDarkMode ? cn("bg-white/10 border-white/10 text-white", modalTheme.borderHoverBase) : cn("bg-white/60 border-white/70 text-slate-900", modalTheme.borderHoverBase)
                 )}
               />
@@ -230,7 +231,7 @@ export default function SupremeSimulator({ realUser, simulationState, onStartSim
                 onStartSimulation(draft);
                 onClose();
               }}
-              className={cn("flex items-center gap-2 px-6 py-3 rounded-lg text-white text-sm font-black uppercase tracking-widest transition-colors shadow-lg", modalTheme.accentBg, modalTheme.shadowGlow)}
+              className={cn("flex items-center gap-2 px-6 py-3 rounded-lg text-white text-sm font-black uppercase tracking-widest transition-colors shadow-lg", modalTheme.accentBg)}
             >
               Ativar Simulacao
               <ArrowRight className="w-4 h-4" />

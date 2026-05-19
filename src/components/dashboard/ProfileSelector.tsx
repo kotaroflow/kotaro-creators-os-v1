@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { User, Profile, NazarickRole } from '../../types';
+import { User, Profile, NazarickRole, SIMULATION_PROFILE_ID, createSimulationProfile } from '../../types';
 import { Plus, LogOut, Sparkles, Building2, ChevronRight, Edit2, Trash2, X, Save, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -50,6 +50,7 @@ const normalizeProfileAccess = (profile: Profile): Profile => {
 
   return {
     ...profile,
+    name: profile.name === 'Kotaro Creators' ? 'YGGNAROK Core' : profile.name,
     memberIds,
     managerIds: profile.managerIds || (profile.ownerId ? [profile.ownerId] : []),
     editorIds: profile.editorIds || [],
@@ -220,24 +221,26 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
   };
 
   const isSupreme = user.role === NazarickRole.MOMONGA;
-  const isHighLevel = isSupreme || user.role === NazarickRole.ALBEDO || user.role === NazarickRole.DEMIURGE;
+  const visibleProfiles = isSupreme
+    ? [createSimulationProfile(user.uid), ...profiles.filter((profile) => profile.id !== SIMULATION_PROFILE_ID)]
+    : profiles;
 
   return (
     <div className={cn(
-      "min-h-screen w-full flex flex-col items-center p-8 pt-24 overflow-x-hidden overflow-y-auto relative transition-colors duration-700 select-none",
-      isDarkMode ? "bg-slate-950 text-white" : "bg-white text-slate-900"
+      "min-h-screen w-full flex flex-col items-center p-8 pt-24 overflow-x-hidden overflow-y-auto relative transition-colors duration-300 select-none ygn-os-body",
+      isDarkMode ? "ygn-bg-dark text-white" : "ygn-bg-light text-slate-900"
     )}>
       {/* Background Fill to prevent white edges during bounce/scroll */}
       <div className={cn(
-        "fixed inset-0 z-[-1] transition-colors duration-700",
-        isDarkMode ? "bg-slate-950" : "bg-white"
+        "fixed inset-0 z-[-1] transition-colors duration-300",
+        isDarkMode ? "ygn-bg-dark" : "ygn-bg-light"
       )} />
       {/* Dark Mode Toggle */}
       <div className="absolute top-8 right-8 z-50">
         <button 
           onClick={onToggleDarkMode}
           className={cn(
-            "relative h-10 w-24 rounded-full p-1 transition-all duration-500 border overflow-hidden",
+            "relative h-10 w-24 rounded-full p-1 transition-colors duration-200 border overflow-hidden",
             isDarkMode ? "bg-slate-900 border-slate-800 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]" : "bg-slate-100 border-slate-200 shadow-inner"
           )}
         >
@@ -246,14 +249,14 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
             className={cn(
               "h-full aspect-square rounded-full flex items-center justify-center shadow-md relative z-10",
-              isDarkMode ? "bg-indigo-600 ml-auto" : "bg-white"
+              isDarkMode ? "bg-slate-700 ml-auto" : "bg-white"
             )}
           >
             <motion.span 
               key={isDarkMode ? 'dark' : 'light'}
               initial={{ scale: 0.5, opacity: 0, rotate: -45 }}
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              className={cn("text-[10px] font-black", isDarkMode ? "text-white" : "text-indigo-600")}
+              className={cn("text-[10px] font-black", isDarkMode ? "text-white" : "text-slate-700")}
             >
               {isDarkMode ? "ON" : "OFF"}
             </motion.span>
@@ -270,45 +273,51 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.36, ease: "easeOut" }}
         className="text-center mb-16"
       >
         <h1 className={cn("text-4xl md:text-6xl font-black mb-4 tracking-tighter uppercase transition-colors duration-500", isDarkMode ? "text-white" : "text-slate-900")}>Identidade Operacional</h1>
         <p className={cn("font-black uppercase text-[10px] tracking-[0.6em] transition-colors duration-500", isDarkMode ? "text-slate-500" : "text-slate-400")}>
-          {isSupreme ? "Gerenciar Protocolos de Nazarick" : "Acessar Protocolos de Comando"}
+          {isSupreme ? "Gerenciar perfis e sandbox" : "Acessar perfil autorizado"}
         </p>
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 md:gap-16 max-w-7xl w-full px-4 justify-items-center">
-        {profiles.map((profile, i) => (
+        {visibleProfiles.map((profile, i) => {
+          const isSimulationProfile = profile.id === SIMULATION_PROFILE_ID;
+          return (
             <motion.div
               key={profile.id}
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + (i * 0.1), duration: 0.8, ease: "circOut" }}
+              transition={{ delay: 0.08 + (i * 0.035), duration: 0.32, ease: "easeOut" }}
               className="flex flex-col items-center group cursor-pointer w-full max-w-[280px]"
               onClick={() => handleSelect(profile)}
             >
               <div className="relative mb-8 w-full aspect-square">
                 <motion.div 
-                  whileHover={{ y: -10, scale: 1.02 }}
+                  whileHover={{ y: -3, scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
                   className={cn(
-                    "absolute inset-0 rounded-[3rem] flex flex-col items-center justify-center overflow-hidden border-2 transition-all duration-500",
-                    isDarkMode 
-                      ? "bg-slate-900 border-white/5 group-hover:border-indigo-500 group-hover:shadow-[0_25px_60px_rgba(0,0,0,0.6)]" 
-                      : "bg-slate-50 border-transparent group-hover:border-indigo-600 group-hover:shadow-[0_25px_60px_rgba(79,70,229,0.2)]"
+                    "absolute inset-0 rounded-[3rem] flex flex-col items-center justify-center overflow-hidden border-2 transition-colors duration-200",
+                    isSimulationProfile
+                      ? isDarkMode
+                        ? "glass-panel border-white/12 group-hover:border-white/24"
+                        : "glass-panel-light border-white/70 group-hover:border-white"
+                      : isDarkMode
+                      ? "glass-panel border-white/10 group-hover:border-white/20"
+                      : "glass-panel-light border-white/70 group-hover:border-white"
                   )}
                 >
-                  <div className={cn("absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity")} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/18 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   {/* Hexagon Blueprint Pattern (subtle) */}
                   <div className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity pointer-events-none bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[size:16px_16px]" />
                   
-                  <Building2 className={cn("w-14 h-14 md:w-20 md:h-20 mb-4 transition-colors duration-500 relative z-10", isDarkMode ? "text-slate-700 group-hover:text-indigo-400" : "text-slate-200 group-hover:text-indigo-600")} />
+                  <Building2 className={cn("w-14 h-14 md:w-20 md:h-20 mb-4 transition-colors duration-200 relative z-10", isSimulationProfile ? "text-slate-400 group-hover:text-slate-100" : isDarkMode ? "text-slate-500 group-hover:text-slate-200" : "text-slate-300 group-hover:text-slate-700")} />
                   
                   <div className="text-center px-6 relative z-10">
-                    <p className={cn("text-[10px] font-black uppercase tracking-[0.25em] transition-colors mb-1", isDarkMode ? "text-slate-600 group-hover:text-indigo-300" : "text-slate-400 group-hover:text-indigo-500")}>
+                    <p className={cn("text-[10px] font-black uppercase tracking-[0.25em] transition-colors mb-1", isDarkMode ? "text-slate-500 group-hover:text-slate-200" : "text-slate-400 group-hover:text-slate-700")}>
                       {profile.niche}
                     </p>
                     <p className={cn("text-[8px] font-medium uppercase tracking-[0.1em] opacity-40 line-clamp-1 group-hover:opacity-80 transition-opacity", isDarkMode ? "text-slate-500" : "text-slate-400")}>
@@ -317,16 +326,16 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                   </div>
 
                   {/* Tech Corner Accents */}
-                  <div className="absolute top-4 left-4 w-2 h-2 border-t border-l border-indigo-500/0 group-hover:border-indigo-500/50 transition-colors" />
-                  <div className="absolute bottom-4 right-4 w-2 h-2 border-b border-r border-indigo-500/0 group-hover:border-indigo-500/50 transition-colors" />
+                  <div className="absolute top-4 left-4 w-2 h-2 border-t border-l border-white/0 group-hover:border-white/45 transition-colors" />
+                  <div className="absolute bottom-4 right-4 w-2 h-2 border-b border-r border-white/0 group-hover:border-white/45 transition-colors" />
 
-                  {(profile.ownerId === user.uid || isSupreme) && (
+                  {!isSimulationProfile && (profile.ownerId === user.uid || isSupreme) && (
                     <div className="absolute top-5 right-5">
                       <button 
                         onClick={(e) => { e.stopPropagation(); setEditingProfile(profile); }}
                         className={cn(
-                          "p-2.5 backdrop-blur-md rounded-xl shadow-sm border opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0",
-                          isDarkMode ? "bg-slate-800/80 border-white/10 text-slate-400 hover:text-indigo-400" : "bg-white/80 border-slate-100 text-slate-400 hover:text-indigo-600"
+                          "ygn-icon-button border opacity-0 group-hover:opacity-100 transition-opacity",
+                          isDarkMode ? "glass-control border-white/10 text-slate-400 hover:text-white" : "glass-control border-white/70 text-slate-400 hover:text-slate-900"
                         )}
                       >
                         <Settings className="w-4 h-4" />
@@ -336,56 +345,43 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                 </motion.div>
               </div>
               <span className={cn("text-2xl font-black transition-colors uppercase tracking-[0.25em] leading-none mb-2 text-center", isDarkMode ? "text-white" : "text-slate-900")}>{profile.name}</span>
-              <span className={cn("text-[9px] font-black uppercase tracking-[0.4em] transition-colors", isDarkMode ? "text-indigo-500/50" : "text-slate-400")}>Nível Identificado</span>
+              <span className={cn("text-[9px] font-black uppercase tracking-[0.4em] transition-colors", isDarkMode ? "text-slate-500" : "text-slate-400")}>Nivel Identificado</span>
             </motion.div>
-        ))}
+          );
+        })}
 
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 + (profiles.length * 0.1), duration: 0.8, ease: "circOut" }}
+          transition={{ delay: 0.08 + (visibleProfiles.length * 0.035), duration: 0.32, ease: "easeOut" }}
           className="flex flex-col items-center group cursor-pointer w-full max-w-[240px]"
           onClick={() => setIsCreating(true)}
         >
           <div className="relative mb-8 w-full aspect-square">
             <motion.div 
-              whileHover={{ y: -10, scale: 1.02 }}
+              whileHover={{ y: -3, scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               className={cn(
-                "absolute inset-0 rounded-[3rem] border-2 border-dashed flex items-center justify-center transition-all duration-500",
-                isDarkMode 
-                  ? "border-slate-800 bg-slate-900/40 hover:border-indigo-500/40 hover:bg-slate-900 shadow-inner" 
-                  : "border-slate-200 bg-slate-50/50 hover:border-indigo-600/40 hover:bg-slate-50"
+                "absolute inset-0 rounded-[3rem] border-2 border-dashed flex items-center justify-center transition-colors duration-200",
+                isDarkMode
+                  ? "border-white/10 glass-panel hover:border-white/20 shadow-inner"
+                  : "border-white/70 glass-panel-light hover:border-white"
               )}
             >
-              <Plus className={cn("w-14 h-14 md:w-20 md:h-20 transition-colors", isDarkMode ? "text-slate-800 group-hover:text-indigo-400" : "text-slate-200 group-hover:text-indigo-400")} />
+              <Plus className={cn("w-14 h-14 md:w-20 md:h-20 transition-colors", isDarkMode ? "text-slate-500 group-hover:text-slate-200" : "text-slate-300 group-hover:text-slate-700")} />
             </motion.div>
           </div>
-          <span className={cn("text-2xl font-black transition-colors uppercase tracking-[0.25em] mb-2", isDarkMode ? "text-slate-700 group-hover:text-indigo-400" : "text-slate-300 group-hover:text-indigo-400")}>Novo Perfil</span>
-          <span className={cn("text-[9px] font-black uppercase tracking-[0.4em] text-slate-700", isDarkMode ? "text-slate-800" : "text-slate-200")}>Expandir Nazarick</span>
+          <span className={cn("text-2xl font-black transition-colors uppercase tracking-[0.25em] mb-2", isDarkMode ? "text-slate-600 group-hover:text-slate-200" : "text-slate-400 group-hover:text-slate-700")}>Novo Perfil</span>
+          <span className={cn("text-[9px] font-black uppercase tracking-[0.4em] text-slate-700", isDarkMode ? "text-slate-800" : "text-slate-200")}>Expandir YGN</span>
         </motion.div>
       </div>
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 1 }}
+        transition={{ delay: 0.18, duration: 0.28 }}
         className="mt-20 md:mt-32 flex flex-col items-center gap-10"
       >
-        {isHighLevel && (
-          <button 
-            onClick={() => {}} 
-            className={cn(
-              "px-8 py-3 border rounded-full transition-all font-black uppercase text-[10px] tracking-[0.5em] shadow-sm",
-              isDarkMode 
-                ? "bg-slate-900 border-white/5 text-slate-500 hover:text-white hover:border-white/10" 
-                : "bg-white border-slate-200 text-slate-400 hover:text-slate-900 hover:border-slate-900"
-            )}
-          >
-            Configurar Interfaces
-          </button>
-        )}
-        
         <button 
           onClick={onLogout}
           className={cn(
@@ -393,7 +389,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
             isDarkMode ? "text-slate-700 hover:text-red-500" : "text-slate-300 hover:text-red-500"
           )}
         >
-          <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" /> Sair do Sistema
+          <LogOut className="w-4 h-4" /> Sair do Sistema
         </button>
       </motion.div>
 
@@ -409,7 +405,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-900/40"
               onClick={() => setIsCreating(false)}
             />
             <motion.div 
@@ -418,7 +414,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className={cn(
                 "w-full max-w-lg border rounded-3xl p-10 relative z-10 shadow-2xl transition-colors duration-500",
-                isDarkMode ? "bg-slate-900 border-white/5" : "bg-white border-slate-200"
+                isDarkMode ? "glass-panel border-white/10" : "glass-panel-light border-white/70"
               )}
             >
                <h2 className={cn("text-3xl font-black mb-8 tracking-tighter uppercase", isDarkMode ? "text-white" : "text-slate-900")}>Novo Domínio</h2>
@@ -428,10 +424,10 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                   <input 
                     required
                     className={cn(
-                      "w-full border rounded-2xl p-4 transition-all outline-none",
-                      isDarkMode 
-                        ? "bg-black/20 border-white/5 text-white focus:ring-indigo-500/30 placeholder:text-slate-700" 
-                        : "bg-slate-50 border-slate-100 text-slate-900 focus:ring-indigo-600 placeholder:text-slate-300"
+                      "w-full border rounded-lg p-4 transition-colors outline-none",
+                      isDarkMode
+                        ? "glass-control border-white/10 text-white placeholder:text-slate-600"
+                        : "glass-control border-white/70 text-slate-900 placeholder:text-slate-400"
                     )}
                     placeholder="Ex: Tumba de Ouro"
                     value={newProfile.name}
@@ -443,10 +439,10 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                   <input 
                     required
                     className={cn(
-                      "w-full border rounded-2xl p-4 transition-all outline-none",
-                      isDarkMode 
-                        ? "bg-black/20 border-white/5 text-white focus:ring-indigo-500/30 placeholder:text-slate-700" 
-                        : "bg-slate-50 border-slate-100 text-slate-900 focus:ring-indigo-600 placeholder:text-slate-300"
+                      "w-full border rounded-lg p-4 transition-colors outline-none",
+                      isDarkMode
+                        ? "glass-control border-white/10 text-white placeholder:text-slate-600"
+                        : "glass-control border-white/70 text-slate-900 placeholder:text-slate-400"
                     )}
                     placeholder="Ex: Tecnologia, Finanças"
                     value={newProfile.niche}
@@ -454,7 +450,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                   />
                 </div>
                 <div className="flex gap-4 pt-6">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition-colors uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20">Criar Domínio</button>
+                  <button type="submit" className="flex-1 bg-slate-900 text-white font-black py-4 rounded-lg hover:bg-slate-800 transition-colors uppercase tracking-widest text-[10px] shadow-lg">Criar Dominio</button>
                   <button type="button" onClick={() => setIsCreating(false)} className={cn("flex-1 font-black py-4 rounded-2xl transition-colors uppercase tracking-widest text-[10px]", isDarkMode ? "bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-white" : "bg-slate-100 text-slate-400 hover:bg-slate-200")}>Cancelar</button>
                 </div>
                </form>
@@ -468,7 +464,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-900/40"
               onClick={() => setEditingProfile(null)}
             />
             <motion.div 
@@ -477,7 +473,7 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className={cn(
                 "w-full max-w-lg border rounded-3xl p-10 relative z-10 shadow-2xl transition-colors duration-500",
-                isDarkMode ? "bg-slate-900 border-white/5" : "bg-white border-slate-200"
+                isDarkMode ? "glass-panel border-white/10" : "glass-panel-light border-white/70"
               )}
             >
                <div className="flex justify-between items-center mb-8">
@@ -495,17 +491,17 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
                   <input 
                     required
                     className={cn(
-                      "w-full border rounded-2xl p-4 transition-all outline-none",
-                      isDarkMode 
-                        ? "bg-black/20 border-white/5 text-white focus:ring-indigo-500/30" 
-                        : "bg-slate-50 border-slate-100 text-slate-900 focus:ring-indigo-600"
+                      "w-full border rounded-lg p-4 transition-colors outline-none",
+                      isDarkMode
+                        ? "glass-control border-white/10 text-white"
+                        : "glass-control border-white/70 text-slate-900"
                     )}
                     value={editingProfile.name}
                     onChange={e => setEditingProfile({...editingProfile, name: e.target.value})}
                   />
                 </div>
                 <div className="flex gap-4 pt-6">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition-colors uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20">Salvar Mudanças</button>
+                  <button type="submit" className="flex-1 bg-slate-900 text-white font-black py-4 rounded-lg hover:bg-slate-800 transition-colors uppercase tracking-widest text-[10px] shadow-lg">Salvar Mudancas</button>
                   <button type="button" onClick={() => setEditingProfile(null)} className={cn("flex-1 font-black py-4 rounded-2xl transition-colors uppercase tracking-widest text-[10px]", isDarkMode ? "bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-white" : "bg-slate-100 text-slate-400 hover:bg-slate-200")}>Descartar</button>
                 </div>
                </form>

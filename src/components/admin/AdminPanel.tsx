@@ -1,35 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, getDocs, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { arrayRemove, arrayUnion, collection, doc, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
+import { BarChart3, Building2, CheckCircle, Edit3, Save, Shield, Tag, TrendingUp, Users, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { User, Profile, NazarickRole, OperationalMode } from '../../types';
-import { Shield, Users, Building2, BarChart3, AlertTriangle, FileText, CheckCircle, ChevronRight, Tag, Edit3, X, Save, TrendingUp } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { NazarickRole, OperationalMode, User } from '../../types';
 import { cn } from '../../lib/utils';
 
+type AdminTab = 'comando' | 'evolucao' | 'auditoria';
+
+const tabs: Array<{ id: AdminTab; label: string }> = [
+  { id: 'comando', label: 'Comando' },
+  { id: 'evolucao', label: 'Evolucao' },
+  { id: 'auditoria', label: 'Auditoria' },
+];
+
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<'comando' | 'evolucao' | 'overlord'>('comando');
+  const [activeTab, setActiveTab] = useState<AdminTab>('comando');
   const [stats, setStats] = useState({
     usersCount: 0,
     profilesCount: 0,
-    activeCampaigns: 5,
+    activeCampaigns: 0,
     systemHealth: 98,
-    aiLoad: 42
+    aiLoad: 42,
   });
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   useEffect(() => {
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-      const usersData = snap.docs.map(d => ({ ...d.data(), uid: d.id } as User));
+      const usersData = snap.docs.map((entry) => ({ ...entry.data(), uid: entry.id } as User));
       setUsers(usersData);
-      setStats(prev => ({ ...prev, usersCount: snap.size }));
-      setLoading(false);
+      setStats((prev) => ({ ...prev, usersCount: snap.size }));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'usuarios');
     });
 
     const fetchProfiles = async () => {
-      const pSnap = await getDocs(collection(db, 'profiles'));
-      setStats(prev => ({ ...prev, profilesCount: pSnap.size }));
+      try {
+        const pSnap = await getDocs(collection(db, 'profiles'));
+        setStats((prev) => ({ ...prev, profilesCount: pSnap.size }));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'profiles');
+      }
     };
 
     fetchProfiles();
@@ -41,10 +53,10 @@ export default function AdminPanel() {
     const hasTag = currentTags.includes('ainz ooal gown');
     try {
       await updateDoc(userRef, {
-        tags: hasTag ? arrayRemove('ainz ooal gown') : arrayUnion('ainz ooal gown')
+        tags: hasTag ? arrayRemove('ainz ooal gown') : arrayUnion('ainz ooal gown'),
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `usuários/${userId}`);
+      handleFirestoreError(error, OperationType.UPDATE, `usuarios/${userId}`);
     }
   };
 
@@ -52,15 +64,15 @@ export default function AdminPanel() {
     const userRef = doc(db, 'users', userId);
     try {
       await updateDoc(userRef, {
-        levelLimitBreak: !currentLimitBreak
+        levelLimitBreak: !currentLimitBreak,
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `usuários/${userId}`);
+      handleFirestoreError(error, OperationType.UPDATE, `usuarios/${userId}`);
     }
   };
 
-  const handleUpdateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateUser = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!editingUser) return;
 
     try {
@@ -68,435 +80,331 @@ export default function AdminPanel() {
       await updateDoc(userRef, { ...editingUser });
       setEditingUser(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `usuários/${editingUser.uid}`);
+      handleFirestoreError(error, OperationType.UPDATE, `usuarios/${editingUser.uid}`);
     }
   };
 
+  const highLevelUsers = users.filter((user) => user.level >= 999);
+
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 pb-20">
-      {/* Header Estilizado: Grande Tumba de Nazarick */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-900 p-10 text-white border border-white/10 shadow-2xl">
-        <div className="absolute inset-x-10 top-0 h-px bg-amber-400/60" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-white/10 glass-control rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
-              <Shield className="w-10 h-10 text-amber-300" />
+    <div className="space-y-8 pb-20">
+      <section className="glass-panel-light dark:glass-panel relative overflow-hidden rounded-lg border p-8">
+        <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-5">
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-white/30 bg-white/14 text-slate-200 shadow-inner">
+              <Shield className="h-7 w-7" />
             </div>
             <div>
-              <h1 className="font-bold text-4xl tracking-tighter uppercase">Grande Tumba de Nazarick</h1>
-              <p className="text-indigo-400 font-black text-xs uppercase tracking-[0.3em] mt-1 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20 inline-block">Tumba de Nazarick (Nível Máximo)</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.36em] text-slate-500">Nucleo Admin</p>
+              <h1 className="mt-1 text-3xl font-black uppercase tracking-tight text-slate-950 dark:text-white">Governanca YGN</h1>
             </div>
           </div>
-          
-          <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/10 glass-control self-start md:self-center overflow-x-auto">
-            <button 
-              onClick={() => setActiveTab('comando')}
-              className={cn(
-                "px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
-                activeTab === 'comando' ? "bg-white text-slate-900 shadow-xl" : "text-white/60 hover:text-white"
-              )}
-            >
-              Comando Supremo
-            </button>
-            <button 
-              onClick={() => setActiveTab('evolucao')}
-              className={cn(
-                "px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
-                activeTab === 'evolucao' ? "bg-white text-slate-900 shadow-xl" : "text-white/60 hover:text-white"
-              )}
-            >
-              Evolução
-            </button>
-            <button 
-              onClick={() => setActiveTab('overlord')}
-              className={cn(
-                "px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
-                activeTab === 'overlord' ? "bg-white text-slate-900 shadow-xl" : "text-white/60 hover:text-white"
-              )}
-            >
-              OverLord
-            </button>
+
+          <div className="glass-control flex gap-1 rounded-lg border border-white/20 p-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  'rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors',
+                  activeTab === tab.id
+                    ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950'
+                    : 'text-slate-500 hover:text-slate-950 dark:hover:text-white'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
       <AnimatePresence mode="wait">
-        {activeTab === 'comando' ? (
-          <motion.div 
+        {activeTab === 'comando' && (
+          <motion.div
             key="comando"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="space-y-10"
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="space-y-6"
           >
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <StatCard icon={Users} label="Subordinados" value={stats.usersCount} sub="Capacidade Nazarick" color="text-indigo-600" bg="bg-indigo-50" />
-              <StatCard icon={Building2} label="Domínios" value={stats.profilesCount} sub="Espaços Ativos" color="text-indigo-600" bg="bg-indigo-50" />
-              <StatCard icon={CheckCircle} label="Saúde Nazarick" value={`${stats.systemHealth}%`} sub="Status do Trono" color="text-emerald-600" bg="bg-emerald-50" />
-              <StatCard icon={BarChart3} label="Carga I.A." value={`${stats.aiLoad}%`} sub="Utilização de Núcleo" color="text-amber-600" bg="bg-amber-50" />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <StatCard icon={Users} label="Usuarios" value={stats.usersCount} sub="Membros registrados" />
+              <StatCard icon={Building2} label="Perfis" value={stats.profilesCount} sub="Ambientes ativos" />
+              <StatCard icon={CheckCircle} label="Saude" value={`${stats.systemHealth}%`} sub="Estado do nucleo" />
+              <StatCard icon={BarChart3} label="Carga I.A." value={`${stats.aiLoad}%`} sub="Leitura interna" />
             </div>
 
-            <div className="nazarick-card p-10 bg-white">
-              <div className="flex items-center justify-between mb-8">
+            <section className="glass-panel-light dark:glass-panel rounded-lg border p-6">
+              <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2 uppercase text-xs tracking-widest">
-                    <Users className="w-5 h-5 text-indigo-600" /> Registro de Subordinados
-                  </h3>
-                  <p className="text-[10px] text-slate-400 font-medium uppercase mt-1 italic">Gestão e controle de permissões de alto escalão</p>
+                  <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Usuarios e permissoes</h2>
+                  <p className="mt-1 text-xs font-medium text-slate-500">Base multiusuario do YGGNAROK, preparada para membros confiaveis e varios perfis por usuario.</p>
                 </div>
               </div>
+
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full min-w-[760px] text-left">
                   <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="pb-4 text-[10px] uppercase font-black text-slate-400 tracking-widest">Entidade</th>
-                      <th className="pb-4 text-[10px] uppercase font-black text-slate-400 tracking-widest">Tags de Atribuição</th>
-                      <th className="pb-4 text-[10px] uppercase font-black text-slate-400 tracking-widest">Métricas Reais</th>
-                      <th className="pb-4 text-[10px] uppercase font-black text-slate-400 tracking-widest text-right">Governança</th>
+                    <tr className="border-b border-white/14 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <th className="pb-4">Usuario</th>
+                      <th className="pb-4">Cargo</th>
+                      <th className="pb-4">Progresso</th>
+                      <th className="pb-4 text-right">Acoes</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {users.map(u => (
-                      <tr key={u.uid} className="group hover:bg-slate-50/50 transition-colors">
-                        <td className="py-4 text-xs">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-[10px] border border-slate-200">
-                              {u.name?.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-800">{u.name}</p>
-                              <p className="text-[9px] text-slate-400 font-mono tracking-tighter uppercase">{u.role}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4">
-                          <div className="flex flex-wrap gap-1 max-w-[200px]">
-                            {u.tags?.map((t, idx) => (
-                              <span key={`${t}-${idx}`} className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-                                {t}
-                              </span>
-                            ))}
-                            {(!u.tags || u.tags.length === 0) && <span className="text-[9px] text-slate-300 italic">Nenhum rastro</span>}
-                          </div>
-                        </td>
-                        <td className="py-4">
-                          <div className="flex items-center gap-4 text-[10px] font-mono">
-                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                              <span className="text-slate-400 block pb-0.5 leading-none">LVL/XP</span>
-                              <span className="font-bold">{u.level} / {u.xp}</span>
-                            </div>
-                            <div className="bg-indigo-50 p-2 rounded-lg border border-indigo-100 text-indigo-600">
-                              <span className="text-indigo-400 block pb-0.5 leading-none">RANK</span>
-                              <span className="font-bold">{u.rank}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button 
-                              onClick={() => setEditingUser(u)}
-                              className="p-2 rounded-xl bg-slate-100 text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => toggleAinzTag(u.uid, u.tags)}
-                              className={cn(
-                                "text-[9px] font-black uppercase px-3 py-2 rounded-xl border transition-all flex items-center gap-2",
-                                u.tags?.includes('ainz ooal gown') 
-                                  ? "bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200" 
-                                  : "bg-white border-slate-200 text-slate-400 hover:text-purple-600 hover:border-purple-200"
-                              )}
-                            >
-                              <Tag className="w-3.5 h-3.5" />
-                              {u.tags?.includes('ainz ooal gown') ? 'Remover Ainz' : 'Dar Tag Ainz'}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </motion.div>
-        ) : activeTab === 'evolucao' ? (
-          <motion.div 
-            key="evolucao"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="space-y-10"
-          >
-            <div className="nazarick-card p-8">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
-                  <TrendingUp className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800">Ascensão aos 4 Dígitos</h2>
-                  <p className="text-sm text-slate-500 font-medium mt-1">Autorização Supremos: Jogadores Nível 999 aguardando quebra de limite (Level 1000+)</p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b text-[10px] uppercase font-black tracking-widest text-slate-400">
-                      <th className="py-4 px-6 font-medium">Usuário</th>
-                      <th className="py-4 px-6 font-medium">Status Atual</th>
-                      <th className="py-4 px-6 font-medium">Decisão Suprema</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {users.filter(u => u.level >= 999).length === 0 && (
+                  <tbody className="divide-y divide-white/10">
+                    {users.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="py-8 text-center text-slate-400 text-sm">
-                          Nenhum usuário alcançou o Nível 999 ainda.
-                        </td>
+                        <td colSpan={4} className="py-8 text-center text-sm font-medium text-slate-500">Nenhum usuario sincronizado ainda.</td>
                       </tr>
                     )}
-                    {users.filter(u => u.level >= 999).map(u => (
-                      <tr key={u.uid} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-4 px-6">
-                          <p className="font-bold text-slate-800 text-sm">{u.name}</p>
-                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">{u.uid.substring(0, 8)}...</p>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-2">
-                             <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-black font-mono">
-                               LVL: {u.level}
-                             </span>
-                             {u.levelLimitBreak && (
-                               <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-[10px] font-black uppercase tracking-widest">
-                                 Limite Quebrado
-                               </span>
-                             )}
+                    {users.map((entry) => (
+                      <tr key={entry.uid} className="transition-colors hover:bg-white/8">
+                        <td className="py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 bg-white/12 text-xs font-black text-slate-500">
+                              {entry.name?.charAt(0) || 'Y'}
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-slate-900 dark:text-white">{entry.name}</p>
+                              <p className="text-[10px] font-mono uppercase text-slate-500">{entry.uid.slice(0, 8)}</p>
+                            </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6">
-                           <button 
-                             onClick={() => toggleLevelLimitBreak(u.uid, !!u.levelLimitBreak)}
-                             className={cn(
-                               "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
-                               u.levelLimitBreak 
-                                 ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                                 : "bg-indigo-600 text-white shadow-lg border border-indigo-500 hover:bg-indigo-700"
-                             )}
-                           >
-                              {u.levelLimitBreak ? 'Revogar Autorização' : 'Liberar Ascensão'}
-                           </button>
+                        <td className="py-4 text-xs font-bold text-slate-500">{entry.role}</td>
+                        <td className="py-4">
+                          <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            <span className="glass-control rounded-lg border border-white/10 px-2 py-1">Lvl {entry.level}</span>
+                            <span className="glass-control rounded-lg border border-white/10 px-2 py-1">XP {entry.xp}</span>
+                            <span className="glass-control rounded-lg border border-white/10 px-2 py-1">Rank {entry.rank}</span>
+                          </div>
+                        </td>
+                        <td className="py-4">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setEditingUser(entry)}
+                              className="ygn-icon-button glass-control border border-white/10 text-slate-500 hover:text-slate-950 dark:hover:text-white"
+                              title="Editar usuario"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => toggleAinzTag(entry.uid, entry.tags)}
+                              className={cn(
+                                'flex items-center gap-2 rounded-lg border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors',
+                                entry.tags?.includes('ainz ooal gown')
+                                  ? 'border-white/30 bg-white/18 text-slate-900 dark:text-white'
+                                  : 'glass-control border-white/10 text-slate-500 hover:text-slate-950 dark:hover:text-white'
+                              )}
+                            >
+                              <Tag className="h-3.5 w-3.5" />
+                              {entry.tags?.includes('ainz ooal gown') ? 'Remover tag' : 'Adicionar tag'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            </section>
+          </motion.div>
+        )}
+
+        {activeTab === 'evolucao' && (
+          <motion.div
+            key="evolucao"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="glass-panel-light dark:glass-panel rounded-lg border p-6"
+          >
+            <div className="mb-6 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-white/20 bg-white/14 text-slate-500">
+                <TrendingUp className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Limite de evolucao</h2>
+                <p className="text-sm font-medium text-slate-500">Autorizacao manual para usuarios que alcancarem o teto de level.</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px] text-left">
+                <thead>
+                  <tr className="border-b border-white/14 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    <th className="pb-4">Usuario</th>
+                    <th className="pb-4">Estado</th>
+                    <th className="pb-4">Acao</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {highLevelUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-8 text-center text-sm font-medium text-slate-500">Nenhum usuario alcancou o limite ainda.</td>
+                    </tr>
+                  )}
+                  {highLevelUsers.map((entry) => (
+                    <tr key={entry.uid}>
+                      <td className="py-4">
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{entry.name}</p>
+                        <p className="text-[10px] font-mono uppercase text-slate-500">{entry.uid.slice(0, 8)}</p>
+                      </td>
+                      <td className="py-4">
+                        <span className="glass-control rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          Level {entry.level} {entry.levelLimitBreak ? 'liberado' : 'bloqueado'}
+                        </span>
+                      </td>
+                      <td className="py-4">
+                        <button
+                          onClick={() => toggleLevelLimitBreak(entry.uid, !!entry.levelLimitBreak)}
+                          className="rounded-lg border border-white/15 bg-slate-950 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+                        >
+                          {entry.levelLimitBreak ? 'Revogar' : 'Liberar'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </motion.div>
-        ) : (
-          <motion.div 
-            key="overlord"
-            initial={{ opacity: 0, y: 20 }}
+        )}
+
+        {activeTab === 'auditoria' && (
+          <motion.div
+            key="auditoria"
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="space-y-10"
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="grid grid-cols-1 gap-4 lg:grid-cols-3"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Console Avançado */}
-              <div className="lg:col-span-2 nazarick-card p-0 bg-slate-900 border-none shadow-2xl overflow-hidden flex flex-col h-[500px]">
-                <div className="bg-slate-800/50 px-6 py-4 flex items-center justify-between border-b border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-red-500/50" />
-                      <div className="w-3 h-3 rounded-full bg-amber-500/50" />
-                      <div className="w-3 h-3 rounded-full bg-emerald-500/50" />
-                    </div>
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Nazarick.OS Terminal</span>
-                  </div>
-                  <div className="text-[10px] font-mono text-emerald-400 animate-pulse">SISTEMA ONLINE</div>
-                </div>
-                <div className="flex-1 p-6 font-mono text-sm overflow-y-auto custom-scrollbar bg-slate-950">
-                  <p className="text-emerald-500 mb-2 font-bold select-none">{"> RUN simulador_nazarick_v.4.1"}</p>
-                  <p className="text-slate-400 mb-1 opacity-50 whitespace-pre leading-relaxed">
-                    [INFO] Inicializando Núcleo Momonga... [OK]<br/>
-                    [INFO] Sincronizando Banco de Dados CREA... [OK]<br/>
-                    [INFO] Carregando Modelos de I.A. Preditiva... [OK]<br/>
-                    [INFO] Escaneando Vulnerabilidades... [0 AMEAÇAS DETECTADAS]<br/>
-                    [INFO] Autorização Confirmada: Ser Supremo Detectado.
-                  </p>
-                  <p className="text-indigo-400 mt-4 mb-2 font-bold">{"> ANALISAR saúde_sistema"}</p>
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                      <span className="text-slate-500 block mb-1">LATÊNCIA DATABASE</span>
-                      <span className="text-emerald-400 font-bold">12ms - EXCELENTE</span>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                      <span className="text-slate-500 block mb-1">ESTABILIDADE I.A.</span>
-                      <span className="text-indigo-400 font-bold">99.99% - ABSOLUTA</span>
-                    </div>
-                  </div>
-                  <p className="text-emerald-500 mt-4 animate-pulse select-none">_</p>
-                </div>
-              </div>
-
-              {/* Dados Críticos */}
-              <div className="space-y-6">
-                <div className="nazarick-card p-8 bg-white border-none shadow-xl">
-                  <h4 className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-6">Controle de Privilégios</h4>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                      <span className="text-xs font-bold text-slate-700">MODO_DEV</span>
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">ATIVO</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                      <span className="text-xs font-bold text-slate-700">BYPASS_QUOTA</span>
-                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full uppercase">INATIVO</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                      <span className="text-xs font-bold text-slate-700">ROOT_ACCESS</span>
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">CONCEDIDO</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="nazarick-card p-8 bg-indigo-600 text-white border-none shadow-2xl shadow-indigo-200">
-                  <h4 className="text-[10px] uppercase font-black text-indigo-200 tracking-widest mb-4">Simulação Interna</h4>
-                  <p className="text-sm font-medium mb-6 italic opacity-80 leading-relaxed">"Projete mudanças globais em Nazarick antes de aplicar à base de usuários Pleiades."</p>
-                  <button className="w-full py-4 bg-white text-indigo-600 font-bold rounded-2xl text-xs uppercase tracking-widest hover:scale-[1.02] transition-all shadow-xl shadow-black/20">
-                    Iniciar Simulação OS
-                  </button>
-                </div>
-              </div>
-            </div>
+            <AuditCard label="Sandbox" value="Isolado" desc="Simulacao fixa em perfil proprio, sem fragmentos." />
+            <AuditCard label="Fragmentos" value="Foco real" desc="MATHEUS, KOTARO e MOMONGA nao alteram simulacao." />
+            <AuditCard label="Agentes" value="Funcionais" desc="Sem visual proprio neste ciclo; regras antes de estetica." />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Reusing Edit Modal and other helpers from earlier but with updated Nazarick styling */}
       <AnimatePresence>
         {editingUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setEditingUser(null)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-950/45"
             />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden"
+              exit={{ opacity: 0, scale: 0.98, y: 10 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="glass-panel-light dark:glass-panel relative w-full max-w-lg overflow-hidden rounded-lg border"
             >
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center justify-between border-b border-white/14 p-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg">
-                    <Edit3 className="w-6 h-6" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-white/20 bg-white/12 text-slate-500">
+                    <Edit3 className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900 tracking-tight text-xl">Ajuste de Subordinado</h3>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Parâmetros de Nazarick</p>
+                    <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white">Ajustar usuario</h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Parametros YGN</p>
                   </div>
                 </div>
-                <button onClick={() => setEditingUser(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400">
-                  <X className="w-5 h-5" />
+                <button onClick={() => setEditingUser(null)} className="ygn-icon-button text-slate-500 hover:text-slate-950 dark:hover:text-white">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <form onSubmit={handleUpdateUser} className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="col-span-2 space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Identificação</label>
-                    <input 
-                      type="text" 
-                      value={editingUser.name}
-                      onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
-                      className="nazarick-input"
-                    />
-                  </div>
+              <form onSubmit={handleUpdateUser} className="space-y-5 p-6">
+                <Field label="Identificacao">
+                  <input
+                    type="text"
+                    value={editingUser.name}
+                    onChange={(event) => setEditingUser({ ...editingUser, name: event.target.value })}
+                    className="nazarick-input w-full rounded-lg p-3 text-sm font-bold"
+                  />
+                </Field>
 
-                  <div className="col-span-2 space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Hierarquia (Atribuição)</label>
-                    <select 
-                      value={editingUser.role}
-                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as NazarickRole })}
-                      className="nazarick-input"
-                    >
-                      {Object.values(NazarickRole).map(role => (
-                        <option key={role} value={role}>{role}</option>
-                      ))}
-                    </select>
-                  </div>
+                <Field label="Cargo">
+                  <select
+                    value={editingUser.role}
+                    onChange={(event) => setEditingUser({ ...editingUser, role: event.target.value as NazarickRole })}
+                    className="nazarick-input w-full rounded-lg p-3 text-sm font-bold"
+                  >
+                    {Object.values(NazarickRole).map((role) => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
+                </Field>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nível</label>
-                    <input 
-                      type="number" 
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Level">
+                    <input
+                      type="number"
                       value={editingUser.level}
-                      onChange={(e) => setEditingUser({ ...editingUser, level: parseInt(e.target.value) })}
-                      className="nazarick-input"
+                      onChange={(event) => setEditingUser({ ...editingUser, level: Number(event.target.value) })}
+                      className="nazarick-input w-full rounded-lg p-3 text-sm font-bold"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">XP Total</label>
-                    <input 
-                      type="number" 
+                  </Field>
+                  <Field label="XP">
+                    <input
+                      type="number"
                       value={editingUser.xp}
-                      onChange={(e) => setEditingUser({ ...editingUser, xp: parseInt(e.target.value) })}
-                      className="nazarick-input"
+                      onChange={(event) => setEditingUser({ ...editingUser, xp: Number(event.target.value) })}
+                      className="nazarick-input w-full rounded-lg p-3 text-sm font-bold"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Rank de Batalha</label>
-                    <input 
-                      type="text" 
+                  </Field>
+                  <Field label="Rank">
+                    <input
+                      type="text"
                       value={editingUser.rank}
-                      onChange={(e) => setEditingUser({ ...editingUser, rank: e.target.value })}
-                      className="nazarick-input"
+                      onChange={(event) => setEditingUser({ ...editingUser, rank: event.target.value })}
+                      className="nazarick-input w-full rounded-lg p-3 text-sm font-bold"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Karma</label>
-                    <input 
-                      type="number" 
+                  </Field>
+                  <Field label="Karma">
+                    <input
+                      type="number"
                       value={editingUser.karma}
-                      onChange={(e) => setEditingUser({ ...editingUser, karma: parseInt(e.target.value) })}
-                      className="nazarick-input"
+                      onChange={(event) => setEditingUser({ ...editingUser, karma: Number(event.target.value) })}
+                      className="nazarick-input w-full rounded-lg p-3 text-sm font-bold"
                     />
-                  </div>
-
-                   <div className="col-span-2 space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Frequência Operacional</label>
-                    <select 
-                      value={editingUser.operationalMode}
-                      onChange={(e) => setEditingUser({ ...editingUser, operationalMode: e.target.value as OperationalMode })}
-                      className="nazarick-input"
-                    >
-                      {Object.values(OperationalMode).map(mode => (
-                        <option key={mode} value={mode}>{mode}</option>
-                      ))}
-                    </select>
-                  </div>
+                  </Field>
                 </div>
 
-                <div className="pt-6 flex gap-4">
-                  <button 
+                <Field label="Modo operacional">
+                  <select
+                    value={editingUser.operationalMode}
+                    onChange={(event) => setEditingUser({ ...editingUser, operationalMode: event.target.value as OperationalMode })}
+                    className="nazarick-input w-full rounded-lg p-3 text-sm font-bold"
+                  >
+                    {Object.values(OperationalMode).map((mode) => (
+                      <option key={mode} value={mode}>{mode}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                <div className="flex gap-3 pt-3">
+                  <button
                     type="button"
                     onClick={() => setEditingUser(null)}
-                    className="flex-1 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-100"
+                    className="flex-1 rounded-lg border border-white/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-900 dark:hover:text-white"
                   >
-                    Desconsiderar
+                    Descartar
                   </button>
-                  <button 
+                  <button
                     type="submit"
-                    className="flex-1 py-4 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-2xl transition-all hover:bg-indigo-600 shadow-xl shadow-slate-200 flex items-center justify-center gap-2"
+                    className="flex-1 rounded-lg bg-slate-950 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
                   >
-                    <Save className="w-4 h-4" /> Solidificar Dados
+                    <Save className="mr-2 inline h-4 w-4" />
+                    Salvar
                   </button>
                 </div>
               </form>
@@ -508,45 +416,34 @@ export default function AdminPanel() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, sub, color, bg }: any) {
+function StatCard({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string | number; sub: string }) {
   return (
-    <div className="nazarick-card p-6 flex flex-col gap-4 bg-white">
-      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", bg, color)}>
-        <Icon className="w-6 h-6" />
+    <div className="glass-panel-light dark:glass-panel rounded-lg border p-5">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg border border-white/20 bg-white/12 text-slate-500">
+        <Icon className="h-5 w-5" />
       </div>
-      <div>
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{label}</p>
-        <div className="flex items-baseline gap-2">
-          <p className="text-3xl font-bold tracking-tighter text-slate-900">{value}</p>
-        </div>
-        <p className="text-[9px] text-slate-500 font-medium uppercase tracking-tighter mt-1 italic">{sub}</p>
-      </div>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+      <p className="mt-1 text-3xl font-black tracking-tight text-slate-950 dark:text-white">{value}</p>
+      <p className="mt-1 text-[10px] font-medium uppercase tracking-widest text-slate-500">{sub}</p>
     </div>
   );
 }
 
-function AlertItem({ title, desc, type }: any) {
-  const colors = {
-    info: "border-blue-100 bg-blue-50/50 text-blue-700",
-    warning: "border-amber-100 bg-amber-50/50 text-amber-700",
-    danger: "border-red-100 bg-red-50/50 text-red-700"
-  };
+function AuditCard({ label, value, desc }: { label: string; value: string; desc: string }) {
   return (
-    <div className={cn("p-4 border rounded-2xl", colors[type as keyof typeof colors])}>
-      <h4 className="text-xs font-bold uppercase mb-1 tracking-tight">{title}</h4>
-      <p className="text-[11px] opacity-70 font-medium leading-relaxed">{desc}</p>
+    <div className="glass-panel-light dark:glass-panel rounded-lg border p-6">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+      <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-slate-950 dark:text-white">{value}</h3>
+      <p className="mt-3 text-sm font-medium leading-relaxed text-slate-500">{desc}</p>
     </div>
   );
 }
 
-function ReportLink({ title, date }: any) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 cursor-pointer transition-all border border-white/10 group">
-      <span className="text-xs font-bold group-hover:text-indigo-400 transition-colors uppercase tracking-tight">{title}</span>
-      <div className="flex items-center gap-3">
-        <span className="text-[10px] text-slate-400 font-mono">{date}</span>
-        <ChevronRight className="w-4 h-4 text-slate-500" />
-      </div>
-    </div>
+    <label className="block space-y-2">
+      <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
+      {children}
+    </label>
   );
 }

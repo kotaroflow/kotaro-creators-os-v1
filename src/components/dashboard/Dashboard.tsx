@@ -389,55 +389,26 @@ export default function Dashboard({ user, profile, onNavigate, isDarkMode, activ
 
   const internalHighLevel = ['S', 'SS', 'SSS'].includes(effectiveRank);
 
-  const themeColors: { [key: string]: any } = {
-    [CreatorFragment.MOMONGA]: {
-      bg: 'bg-amber-600',
-      bgHover: 'hover:bg-amber-500',
-      text: 'text-amber-600',
-      textLight: 'text-amber-300',
-      heroBgLight: 'from-amber-500 via-yellow-600 to-slate-900',
-      heroBgDark: 'from-[#05040A] via-[#1d1606] to-[#090704]',
-      glow: 'bg-amber-500/20 dark:bg-amber-500/12',
-      borderHoverDark: 'hover:border-amber-400/30',
-      borderHoverLight: 'hover:border-amber-600/20',
-      textHover: 'hover:text-amber-600',
-      borderHoverBtnDark: 'hover:border-amber-400',
-      borderHoverBtnLight: 'hover:border-amber-600',
-      groupTextHover: 'group-hover:text-amber-600',
-      xpText: 'text-amber-500'
-    },
-    [CreatorFragment.KOTARO]: {
-      bg: 'bg-blue-600',
-      bgHover: 'hover:bg-blue-500',
-      text: 'text-blue-600',
-      textLight: 'text-blue-400',
-      heroBgLight: 'from-blue-600 via-indigo-500 to-blue-700',
-      heroBgDark: 'from-[#080B1F] via-blue-900/50 to-indigo-950/30',
-      glow: 'bg-blue-500/30 dark:bg-blue-500/20',
-      borderHoverDark: 'hover:border-blue-500/30',
-      borderHoverLight: 'hover:border-blue-600/20',
-      textHover: 'hover:text-blue-600',
-      borderHoverBtnDark: 'hover:border-blue-500',
-      borderHoverBtnLight: 'hover:border-blue-600',
-      groupTextHover: 'group-hover:text-blue-600',
-      xpText: 'text-blue-500'
-    },
-    [CreatorFragment.MATHEUS]: {
-      bg: 'bg-amber-600',
-      bgHover: 'hover:bg-amber-500',
-      text: 'text-amber-600',
-      textLight: 'text-amber-400',
-      heroBgLight: 'from-amber-500 via-orange-500 to-amber-700',
-      heroBgDark: 'from-[#090806] via-[#1c1404] to-[#8A5A12]/30',
-      glow: 'bg-amber-500/30 dark:bg-amber-500/20',
-      borderHoverDark: 'hover:border-amber-500/30',
-      borderHoverLight: 'hover:border-amber-600/20',
-      textHover: 'hover:text-amber-600',
-      borderHoverBtnDark: 'hover:border-amber-500',
-      borderHoverBtnLight: 'hover:border-amber-600',
-      groupTextHover: 'group-hover:text-amber-600',
-      xpText: 'text-amber-500'
-    }
+  const neutralFragmentTheme = {
+    bg: 'bg-slate-600',
+    bgHover: 'hover:bg-slate-500',
+    text: 'text-slate-600',
+    textLight: 'text-slate-300',
+    heroBgLight: 'from-white/78 via-slate-100/62 to-slate-200/48',
+    heroBgDark: 'from-slate-950/72 via-slate-900/58 to-slate-800/40',
+    glow: 'bg-white/10 dark:bg-white/8',
+    borderHoverDark: 'hover:border-white/18',
+    borderHoverLight: 'hover:border-white/70',
+    textHover: 'hover:text-slate-700',
+    borderHoverBtnDark: 'hover:border-white/24',
+    borderHoverBtnLight: 'hover:border-white',
+    groupTextHover: 'group-hover:text-slate-700',
+    xpText: 'text-slate-500'
+  };
+  const themeColors: { [key: string]: typeof neutralFragmentTheme } = {
+    [CreatorFragment.MOMONGA]: neutralFragmentTheme,
+    [CreatorFragment.KOTARO]: neutralFragmentTheme,
+    [CreatorFragment.MATHEUS]: neutralFragmentTheme
   };
   const themeAccent = themeColors[activeFragment || CreatorFragment.MOMONGA] || themeColors[CreatorFragment.MOMONGA];
 

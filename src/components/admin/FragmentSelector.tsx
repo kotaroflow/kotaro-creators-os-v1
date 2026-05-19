@@ -19,10 +19,10 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
       subtitle: 'Comercio & Expansao',
       description: 'Foco operacional para vendas, afiliados, campanhas, produtos, links, comissoes, funis e analise comercial.',
       icon: DollarSign,
-      color: 'from-amber-200/78 to-yellow-400/58',
-      lightBg: 'glass-panel-light border-amber-200/50',
-      darkBg: 'glass-panel border-amber-200/18',
-      activeBorder: 'border-amber-200/60 ring-2 ring-amber-200/18'
+      color: 'from-white/70 to-slate-300/56',
+      lightBg: 'glass-panel-light border-white/70',
+      darkBg: 'glass-panel border-white/12',
+      activeBorder: 'border-white/70 ring-1 ring-white/24'
     },
     {
       id: CreatorFragment.KOTARO,
@@ -30,10 +30,10 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
       subtitle: 'Forja & Oficina',
       description: 'Foco operacional para ideias, roteiros, prompts, imagens, videos, edicao, audios, trends e identidade.',
       icon: PenTool,
-      color: 'from-sky-200/76 to-cyan-400/54',
-      lightBg: 'glass-panel-light border-sky-200/50',
-      darkBg: 'glass-panel border-sky-200/18',
-      activeBorder: 'border-sky-200/60 ring-2 ring-sky-200/18'
+      color: 'from-white/70 to-slate-300/56',
+      lightBg: 'glass-panel-light border-white/70',
+      darkBg: 'glass-panel border-white/12',
+      activeBorder: 'border-white/70 ring-1 ring-white/24'
     },
     {
       id: CreatorFragment.MOMONGA,
@@ -41,21 +41,17 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
       subtitle: 'Autoridade & Regras',
       description: 'Foco operacional para cargos, permissoes, regras, Sistema de Evolucao, seguranca estrutural e governanca.',
       icon: Shield,
-      color: 'from-yellow-200/78 to-amber-400/58',
-      lightBg: 'glass-panel-light border-amber-200/52',
-      darkBg: 'glass-panel border-yellow-200/18',
-      activeBorder: 'border-yellow-200/60 ring-2 ring-yellow-200/18'
+      color: 'from-white/70 to-slate-300/56',
+      lightBg: 'glass-panel-light border-white/70',
+      darkBg: 'glass-panel border-white/12',
+      activeBorder: 'border-white/70 ring-1 ring-white/24'
     }
   ];
 
-  const themeColor = activeFragment === CreatorFragment.KOTARO
-    ? "bg-sky-200/70"
-    : activeFragment === CreatorFragment.MATHEUS
-      ? "bg-amber-200/70"
-      : "bg-yellow-200/70";
+  const themeColor = "bg-white/60";
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/28 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/28">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -99,7 +95,7 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
               )}
             >
               Foco Ativo
-              <motion.div layoutId="activeTabIndicator" className={cn("absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full transition-colors", themeColor)} />
+              <div className={cn("absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full", themeColor)} />
             </button>
           </div>
         </div>
@@ -121,16 +117,16 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
                     key={frag.id}
                     onClick={() => onSelect(frag.id)}
                     className={cn(
-                      "relative group p-6 rounded-lg border text-left transition-all duration-300 overflow-hidden flex flex-col",
+                      "relative group p-6 rounded-lg border text-left transition-colors duration-200 overflow-hidden flex flex-col",
                       isDarkMode ? frag.darkBg : frag.lightBg,
-                      isActive ? frag.activeBorder + " scale-[1.01]" : "hover:border-white/60 hover:-translate-y-1"
+                      isActive ? frag.activeBorder : "hover:border-white/60"
                     )}
                   >
                     <div className={cn("absolute inset-x-4 top-0 h-px opacity-40 transition-opacity bg-gradient-to-r", frag.color)} />
 
                     <div className="relative z-10 flex flex-col h-full">
                       <div className={cn(
-                        "w-14 h-14 rounded-lg mb-6 flex items-center justify-center text-white bg-gradient-to-br",
+                        "w-14 h-14 rounded-lg mb-6 flex items-center justify-center border bg-gradient-to-br text-slate-700 dark:text-white border-white/35",
                         frag.color
                       )}>
                         <frag.icon className="w-7 h-7" />
@@ -150,7 +146,7 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
                       <div className="mt-8 pt-4 border-t border-slate-500/20 flex justify-between items-center">
                         <span className={cn(
                           "text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-colors",
-                          isActive ? (isDarkMode ? "text-white" : "text-indigo-600") : "text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-300"
+                          isActive ? (isDarkMode ? "text-white" : "text-slate-900") : "text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-300"
                         )}>
                           {isActive ? 'Foco Real Ativo' : 'Ativar Foco'}
                         </span>

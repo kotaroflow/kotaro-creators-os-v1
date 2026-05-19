@@ -111,7 +111,7 @@ export const agentModuleRules = {
     fragmentFocus:
       "MATHEUS, KOTARO e MOMONGA sao focos operacionais da conta suprema. Eles organizam a area de trabalho real e nao representam ambiente de teste.",
     simulationSandbox:
-      "Simulacao e um ambiente isolado da conta suprema para testar usuario, cargo, rank, permissoes e vinculos com perfis. Ela nao pode alterar ou herdar fragmento.",
+      "Simulacao e o perfil fixo YGN Sandbox da conta suprema para testar usuario, cargo, rank, permissoes e vinculos com perfis. Ela nao pode alterar, herdar ou renderizar fragmento.",
     agentInstruction:
       "Antes de agir, todo agente deve identificar se esta em OS real, fragment_focus ou simulation_sandbox. Nunca misturar estado de fragmento com estado de simulacao.",
   },

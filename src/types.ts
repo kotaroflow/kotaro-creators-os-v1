@@ -72,6 +72,8 @@ export interface User {
 
 export type ProfileAccessLevel = "Owner" | "Admin" | "Editor" | "Viewer";
 
+export const SIMULATION_PROFILE_ID = "ygn-simulation-profile";
+
 export interface Profile {
   id: string;
   name: string;
@@ -85,6 +87,20 @@ export interface Profile {
   viewerIds?: string[];
   createdAt: string;
 }
+
+export const createSimulationProfile = (ownerId: string): Profile => ({
+  id: SIMULATION_PROFILE_ID,
+  name: "YGN Sandbox",
+  niche: "Simulacao",
+  objective: "Testar usuarios, cargos, ranks e permissoes em ambiente isolado",
+  socialAccounts: {},
+  ownerId,
+  memberIds: [ownerId],
+  managerIds: [ownerId],
+  editorIds: [],
+  viewerIds: [],
+  createdAt: "system-fixed-profile",
+});
 
 export interface Task {
   id: string;

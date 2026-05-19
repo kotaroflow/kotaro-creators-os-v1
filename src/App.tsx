@@ -6,11 +6,11 @@
 import React, { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './lib/firebase';
-import { User, Profile, NazarickRole, OperationalMode, getEffectiveRank, CreatorFragment, SimulationState, MarioneteDeNazarick } from './types';
-import { Layout, LogOut, Shield, User as UserIcon, LayoutDashboard, Target, Share2, Library as LibraryIcon, BarChart3, Users, Settings, TrendingUp, Plus, Search, Trash2, Calendar, FileAudio, Menu, LayoutGrid, Layers } from 'lucide-react';
+import { db } from './lib/firebase';
+import { User, Profile, NazarickRole, OperationalMode, CreatorFragment, SimulationState, MarioneteDeNazarick, SIMULATION_PROFILE_ID, createSimulationProfile } from './types';
+import { Layout, LogOut, Shield, LayoutDashboard, Target, Share2, Library as LibraryIcon, BarChart3, Users, Settings, TrendingUp, Search, Calendar, FileAudio, Menu, LayoutGrid, Layers, Bot, Image, PlugZap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, getRankTheme } from './lib/utils';
+import { cn } from './lib/utils';
 import { getLayoutTheme } from './lib/theme';
 
 // Components
@@ -30,6 +30,25 @@ import FragmentSelector from './components/admin/FragmentSelector';
 import SimulationSpace from './components/admin/SimulationSpace';
 
 const AUTH_STORAGE_KEY = 'ygn.auth.user';
+
+type AppView =
+  | 'profiles'
+  | 'dashboard'
+  | 'creation'
+  | 'strategy'
+  | 'campaigns'
+  | 'links'
+  | 'scheduling'
+  | 'reports'
+  | 'library'
+  | 'users'
+  | 'evolution'
+  | 'finance'
+  | 'admin'
+  | 'simulation'
+  | 'agents'
+  | 'media'
+  | 'integrations';
 
 const normalizeRole = (role: unknown): NazarickRole => {
   const raw = String(role || '');
@@ -53,6 +72,7 @@ const normalizeRole = (role: unknown): NazarickRole => {
 
 const normalizeUser = (rawUser: User): User => ({
   ...rawUser,
+  name: rawUser.name === 'Apresentacao Kotaro' ? 'Apresentacao YGN' : rawUser.name,
   role: normalizeRole(rawUser.role),
   operationalMode: Object.values(OperationalMode).includes(rawUser.operationalMode)
     ? rawUser.operationalMode
@@ -94,14 +114,13 @@ export default function App() {
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [showPermissions, setShowPermissions] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isUserDetailsVisible, setIsUserDetailsVisible] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [view, setView] = useState<'profiles' | 'dashboard' | 'creation' | 'strategy' | 'campaigns' | 'links' | 'scheduling' | 'reports' | 'library' | 'users' | 'evolution' | 'finance' | 'admin'>('profiles');
+  const [view, setView] = useState<AppView>('profiles');
   
-  const finalUser = user ? (simulationState.isActive ? normalizeUser({ ...user, ...(simulationState.marioneteNazarick || {}) } as User) : normalizeUser(user)) : null;
+  const isSimulationProfile = activeProfile?.id === SIMULATION_PROFILE_ID || view === 'simulation';
+  const finalUser = user ? (isSimulationProfile && simulationState.isActive ? normalizeUser({ ...user, ...(simulationState.marioneteNazarick || {}) } as User) : normalizeUser(user)) : null;
   const currentFragment = activeFragment;
   const layoutTheme = getLayoutTheme(currentFragment, isDarkMode);
-  const effectiveRank = getEffectiveRank(finalUser);
 
   const openSupremeSimulator = (event?: React.MouseEvent<HTMLElement>) => {
     event?.stopPropagation();
@@ -112,6 +131,48 @@ export default function App() {
 
   const exitSimulation = () => {
     setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
+  };
+
+  const openSimulationProfile = (event?: React.MouseEvent<HTMLElement>) => {
+    event?.stopPropagation();
+    if (!user) return;
+
+    flushSync(() => {
+      setActiveProfile(createSimulationProfile(user.uid));
+      setView('simulation');
+    });
+  };
+
+  const leaveSimulationProfile = () => {
+    exitSimulation();
+    setActiveProfile(null);
+    setView('profiles');
+  };
+
+  const quickApplySimulationPatch = (patch: Partial<User>) => {
+    if (!user) return;
+
+    setSimulationState(prev => ({
+      ...prev,
+      isActive: true,
+      marioneteNazarick: {
+        role: user.role,
+        rank: user.rank,
+        level: user.level,
+        operationalMode: user.operationalMode,
+        xp: user.xp,
+        karma: user.karma,
+        levelLimitBreak: user.levelLimitBreak,
+        managedProfileIds: user.managedProfileIds,
+        ...(prev.marioneteNazarick || {}),
+        ...patch,
+        id: "simulation_marionete_nazarick",
+        displayName: "Marionete de Nazarick",
+        type: "simulation_only",
+        origin: "simulation",
+        isRealUser: false,
+      }
+    }));
   };
 
   const applySimulationToReal = async () => {
@@ -186,16 +247,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.body.className = layoutTheme.bgMain + " ygn-os-body transition-colors duration-1000";
-  }, [layoutTheme.bgMain]);
+    document.body.className = layoutTheme.bgMain + " ygn-os-body transition-colors duration-300";
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [layoutTheme.bgMain, isDarkMode]);
 
 
-  const navigateTo = (newView: typeof view, profile?: Profile) => {
+  const navigateTo = (newView: AppView, profile?: Profile) => {
     if (profile) {
       flushSync(() => {
         setActiveProfile(profile);
-        setIsUserDetailsVisible(false); // Close details on navigation
-        setView(newView);
+        setView(profile.id === SIMULATION_PROFILE_ID ? 'simulation' : newView);
       });
     } else {
       setView(newView);
@@ -204,33 +265,43 @@ export default function App() {
 
   const menuItems = React.useMemo(() => {
     if (!finalUser) return [];
-    
+
+    if (isSimulationProfile) {
+      return [
+        { id: 'simulation', label: 'Simulacao', icon: Shield, modes: [OperationalMode.SUPREME] },
+      ];
+    }
+
     const isSupreme = finalUser.role === NazarickRole.MOMONGA;
     const isHighRank = ['SSS', 'SS', 'S', 'A'].includes(finalUser.rank || 'F');
     const isHighRole = isSupreme || finalUser.role === NazarickRole.ALBEDO || finalUser.role === NazarickRole.DEMIURGE;
 
     return [
-      { id: 'dashboard', label: 'Painel Central', icon: LayoutDashboard, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS, CreatorFragment.KOTARO, CreatorFragment.MOMONGA] },
-      { id: 'creation', label: 'Criação I.A.', icon: FileAudio, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO] },
-      { id: 'strategy', label: 'Estratégia Profunda', icon: Target, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS, CreatorFragment.KOTARO, CreatorFragment.MOMONGA] },
-      { id: 'campaigns', label: 'Arco de Campanhas', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], roleReq: isHighRole, fragments: [CreatorFragment.MATHEUS] },
-      { id: 'links', label: 'Forja de Links', icon: Share2, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MATHEUS] },
-      { id: 'scheduling', label: 'Cronograma', icon: Calendar, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO, CreatorFragment.MATHEUS] },
-      { id: 'reports', label: 'Relatórios de Guerra', icon: BarChart3, modes: [OperationalMode.HARD, OperationalMode.SUPREME], rankReq: isHighRank || isHighRole, fragments: [CreatorFragment.MATHEUS] },
-      { id: 'library', label: 'Biblioteca de Ativos', icon: LibraryIcon, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.KOTARO] },
-      { id: 'users', label: 'Subordinados', icon: Users, modes: [OperationalMode.SUPREME], roleReq: isSupreme, fragments: [CreatorFragment.MOMONGA] },
-      { id: 'evolution', label: 'Evolução de Escala', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], fragments: [CreatorFragment.MOMONGA] },
-      { id: 'finance', label: 'Cofre Real', icon: Settings, modes: [OperationalMode.SUPREME], roleReq: isSupreme, fragments: [CreatorFragment.MATHEUS] },
-      ...(isSupreme ? [{ id: 'admin', label: 'Tumba de Nazarick', icon: Shield, modes: [OperationalMode.SUPREME], fragments: [CreatorFragment.MOMONGA] }] : []),
+      { id: 'dashboard', label: 'Painel Central', icon: LayoutDashboard, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'creation', label: 'Criacao I.A.', icon: FileAudio, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'strategy', label: 'Estrategia', icon: Target, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'campaigns', label: 'Campanhas', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME], roleReq: isHighRole },
+      { id: 'links', label: 'Links', icon: Share2, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'scheduling', label: 'Cronograma', icon: Calendar, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'reports', label: 'Relatorios', icon: BarChart3, modes: [OperationalMode.HARD, OperationalMode.SUPREME], rankReq: isHighRank || isHighRole },
+      { id: 'library', label: 'Biblioteca', icon: LibraryIcon, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'media', label: 'Midia', icon: Image, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'agents', label: 'Agentes', icon: Bot, modes: [OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'integrations', label: 'Conectores', icon: PlugZap, modes: [OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'users', label: 'Usuarios', icon: Users, modes: [OperationalMode.SUPREME], roleReq: isSupreme },
+      { id: 'evolution', label: 'Evolucao', icon: TrendingUp, modes: [OperationalMode.EASY, OperationalMode.NORMAL, OperationalMode.HARD, OperationalMode.SUPREME] },
+      { id: 'finance', label: 'Financeiro', icon: Settings, modes: [OperationalMode.SUPREME], roleReq: isSupreme },
+      ...(isSupreme ? [
+        { id: 'simulation', label: 'Simulacao', icon: Shield, modes: [OperationalMode.SUPREME] },
+        { id: 'admin', label: 'Nucleo Admin', icon: Shield, modes: [OperationalMode.SUPREME] },
+      ] : []),
     ].filter(item => {
       const modeMatch = item.modes.includes(finalUser.operationalMode || OperationalMode.NORMAL);
       const roleMatch = item.roleReq !== undefined ? item.roleReq : true;
       const rankMatch = item.rankReq !== undefined ? item.rankReq : true;
-      const fragmentMatch = (!isSupreme) || (item.fragments ? item.fragments.includes(currentFragment) : true);
-      return modeMatch && roleMatch && rankMatch && fragmentMatch;
+      return modeMatch && roleMatch && rankMatch;
     });
-  }, [finalUser, user, currentFragment]);
-
+  }, [finalUser, isSimulationProfile]);
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -263,10 +334,10 @@ export default function App() {
       {!user ? (
         <motion.div
           key="login"
-          initial={{ opacity: 0, scale: 1.1 }}
+          initial={{ opacity: 0, scale: 1.02 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          exit={{ opacity: 0, scale: 0.99 }}
+          transition={{ duration: 0.36, ease: "easeOut" }}
           className="contents"
         >
           <Login onLogin={handlePresentationLogin} />
@@ -277,7 +348,7 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.36, ease: "easeOut" }}
           className="contents"
         >
           <ProfileSelector 
@@ -293,268 +364,106 @@ export default function App() {
           key="main-app"
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.32, ease: "easeOut" }}
           className={cn(
-            "ygn-app-shell flex h-screen overflow-hidden font-sans transition-colors duration-1000",
-            simulationState.isActive && "hidden",
+            "ygn-app-shell flex h-screen overflow-hidden font-sans transition-colors duration-300",
             layoutTheme.bgMain, layoutTheme.textPrimary
           )}
-          aria-hidden={simulationState.isActive}
         >
           {/* Sidebar */}
-          <motion.aside 
-            initial={false}
-            animate={{ width: isSidebarCollapsed ? 80 : 256 }}
+          <aside
             className={cn(
-              "flex flex-col border-r shrink-0 overflow-hidden transition-colors duration-1000 relative z-30",
+              "flex flex-col border-r shrink-0 overflow-hidden relative z-30 transition-[width,background-color,border-color] duration-200 ease-out",
+              isSidebarCollapsed ? "w-20" : "w-64",
               isDarkMode ? "glass-panel" : "glass-panel-light",
               layoutTheme.bgSidebar, layoutTheme.border
             )}
           >
-            <div className={cn(
-              "h-16 flex items-center px-6 border-b gap-4 transition-colors duration-1000",
-              layoutTheme.border
-            )}>
-              <button 
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            <div className={cn("h-16 flex items-center border-b gap-3 px-4", layoutTheme.border)}>
+              <button
+                onClick={() => setIsSidebarCollapsed((value) => !value)}
                 className={cn(
-                  "p-1 rounded-md transition-colors",
-                  isDarkMode ? "text-slate-400 hover:bg-slate-800 hover:text-white" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  "ygn-icon-button text-slate-400 hover:text-slate-950 dark:hover:text-white",
+                  isDarkMode ? "hover:bg-white/8" : "hover:bg-white/60"
                 )}
+                title={isSidebarCollapsed ? "Expandir barra" : "Recolher barra"}
               >
                 <Menu className="w-5 h-5" />
               </button>
               {!isSidebarCollapsed && (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  className="flex items-center gap-3 overflow-hidden"
-                >
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shrink-0", layoutTheme.accentBg)}>Y</div>
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shrink-0 bg-slate-900/80 dark:bg-white/14">Y</div>
                   <div className="truncate">
                     <h2 className={cn("font-sans font-bold text-sm leading-none tracking-tight uppercase", isDarkMode ? "text-white" : "text-slate-900")}>YGGNAROK</h2>
                     <span className="text-[10px] text-slate-500 font-mono block uppercase truncate">YGN Private OS</span>
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-2 scrollbar-hide">
+            <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-1.5 scrollbar-hide">
               {!isSidebarCollapsed && (
-                <div className="text-[10px] uppercase font-black text-slate-600 px-3 mb-4 tracking-[0.2em] truncate">Workspace</div>
+                <div className="text-[10px] uppercase font-black text-slate-500 px-3 mb-3 tracking-[0.2em] truncate">Workspace</div>
               )}
-              
-              {menuItems.map((item) => (
-                <motion.button 
-                  key={item.id}
-                  layout="position"
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setView(item.id as any)}
-                  title={isSidebarCollapsed ? item.label : undefined}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black transition-all group relative uppercase tracking-widest",
-                    isSidebarCollapsed && "justify-center px-0",
-                    view === item.id 
-                      ? `text-white ${layoutTheme.accentBg} ${layoutTheme.shadowLg}` 
-                      : isDarkMode 
-                        ? `text-slate-400 ${layoutTheme.accentTextHover} ${layoutTheme.hoverBg}` 
-                        : `text-slate-500 ${layoutTheme.accentTextHover} hover:bg-slate-50/80`
-                  )}
-                >
-                  <item.icon className={cn(
-                    "w-4 h-4 shrink-0 transition-all duration-300", 
-                    view === item.id ? "text-white scale-110" : `text-slate-500 ${layoutTheme.accentTextGroupHover} group-hover:scale-110`
-                  )} />
-                  {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
-                  {view === item.id && (
-                    <motion.div 
-                      layoutId="active-nav"
-                      className={cn(
-                        `absolute left-0 w-1 h-4 rounded-full ${layoutTheme.accentBg}`,
-                        layoutTheme.shadowGlow
-                      )}
-                    />
-                  )}
-                </motion.button>
-              ))}
+
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = view === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      if (item.id === 'simulation') {
+                        openSimulationProfile();
+                        return;
+                      }
+                      setView(item.id as AppView);
+                    }}
+                    title={isSidebarCollapsed ? item.label : undefined}
+                    className={cn(
+                      "ygn-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest relative border border-transparent",
+                      isSidebarCollapsed && "justify-center px-0",
+                      isActive
+                        ? "bg-white/22 dark:bg-white/12 text-slate-950 dark:text-white border-white/25"
+                        : isDarkMode
+                          ? "text-slate-400 hover:text-white hover:bg-white/8"
+                          : "text-slate-500 hover:text-slate-950 hover:bg-white/58"
+                    )}
+                  >
+                    <span className={cn("absolute left-0 top-2 bottom-2 w-0.5 rounded-full", isActive ? "bg-current opacity-80" : "bg-transparent")} />
+                    <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-current" : "text-slate-500")} />
+                    {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                );
+              })}
             </nav>
 
-            {!isSidebarCollapsed && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                  "p-4 mx-4 mb-4 rounded-xl border relative overflow-hidden group/rank transition-all duration-500",
-                  isDarkMode 
-                    ? `bg-slate-900 shadow-xl border-white/5 ${layoutTheme.borderHoverBase}` 
-                    : `bg-white shadow-sm border-slate-200 ${layoutTheme.borderHoverBase}`
-                )}
-              >
-                {/* Background Decoration */}
-                <div className={cn(
-                  "absolute inset-0 pointer-events-none opacity-[0.03]",
-                  "bg-[url('https://www.transparenttextures.com/patterns/japanese-sayagata.png')]"
-                )} />
-                <div className={cn("absolute inset-x-0 top-0 h-px pointer-events-none", layoutTheme.accentBg)} />
-                
-                <div className="relative z-10">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className={cn(
-                      "flex items-center gap-1.5 px-2 py-1 rounded-md border",
-                      isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"
-                    )}>
-                      <Shield className={cn("w-2.5 h-2.5", layoutTheme.accentText)} />
-                      <span className={cn("text-[8.5px] font-black uppercase tracking-[0.2em] leading-none font-mono", isDarkMode ? "text-white" : "text-slate-800")}>Sync_V1</span>
-                    </div>
-                    <span className={cn("text-[10px] font-black font-mono", layoutTheme.accentText)}>
-                      {((finalUser?.xp || 0) % 100)}%
-                    </span>
-                  </div>
-
-                  <div className={cn(
-                    "h-1.5 w-full rounded-full overflow-hidden relative",
-                    isDarkMode ? "bg-slate-800" : "bg-slate-100"
-                  )}>
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.max(5, (finalUser?.xp || 0) % 100)}%` }}
-                      transition={{ duration: 2, ease: "circOut" }}
-                      className={cn("h-full rounded-full relative", layoutTheme.accentBg)}
-                    >
-                      <motion.div 
-                        animate={{ x: ['-100%', '400%'] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-full"
-                      />
-                    </motion.div>
-                  </div>
-
-                  <div className="mt-3 flex justify-between items-end">
-                    <div className="flex flex-col">
-                      <span className={cn("text-[7px] font-black uppercase tracking-widest mb-0.5", isDarkMode ? "text-slate-500" : "text-slate-400")}>Patente</span>
-                      <span className={cn("text-[11px] font-black uppercase tracking-tighter leading-none", isDarkMode ? "text-white" : "text-slate-900")}>
-                        Rank {effectiveRank}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                       <span className={cn("text-[7px] font-black uppercase tracking-widest block mb-0.5", isDarkMode ? "text-slate-500" : "text-slate-400")}>Status</span>
-                       <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest block leading-none">ESTÁVEL</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className={cn(
-              "border-t flex group relative transition-all duration-1000",
-              isSidebarCollapsed ? "h-20 items-center justify-center px-0 py-0" : "p-4",
-              layoutTheme.border
-            )}>
-              <div className={cn(
-                "flex items-center relative z-[60]",
-                isSidebarCollapsed ? "justify-center w-full" : "justify-between w-full"
-              )}>
-                <div 
-                  onClick={() => setIsUserDetailsVisible(!isUserDetailsVisible)}
-                  className={cn(
-                    "flex items-center overflow-hidden cursor-pointer group/user shrink-0",
-                    isSidebarCollapsed ? "justify-center w-12 h-12" : "gap-3"
-                  )}
+            <div className={cn("border-t p-3 flex gap-2", layoutTheme.border, isSidebarCollapsed ? "justify-center" : "justify-between")}>
+              {!isSidebarCollapsed && (
+                <button
+                  onClick={() => setView('profiles')}
+                  className="flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-950 dark:hover:text-white hover:bg-white/10"
                 >
-                  <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg ring-2 ring-white/10 group-hover/user:scale-105 transition-transform duration-500", layoutTheme.gradientStart, layoutTheme.gradientVia, layoutTheme.gradientEnd, layoutTheme.shadowGlow)}>
-                    {finalUser?.name?.charAt(0) || 'U'}
-                  </div>
-                  {!isSidebarCollapsed && (
-                    <div className="flex flex-col overflow-hidden group/text">
-                      <span className={cn("text-[11px] font-black leading-none truncate uppercase tracking-tighter transition-colors", isDarkMode ? "text-slate-100" : "text-slate-900", layoutTheme.accentTextGroupHover)}>{finalUser?.name}</span>
-                      <span className="text-[8px] text-slate-500 truncate uppercase font-mono mt-1 font-black">Nazarick System</span>
-                    </div>
-                  )}
-                </div>
-                
-                {!isSidebarCollapsed && (
-                  <button 
-                    onClick={handleLogout}
-                    className={cn(
-                      "p-2 transition-colors rounded-lg",
-                      isDarkMode ? "text-slate-600 hover:text-red-400 bg-slate-800/50" : "text-slate-400 hover:text-red-500 bg-slate-100"
-                    )}
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* User Detail Floating Box - MOVED AND POSITIONED */}
-              <AnimatePresence>
-                {isUserDetailsVisible && (
-                  <motion.div 
-                    initial={{ opacity: 0, x: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: -10, scale: 0.95 }}
-                    className={cn(
-                      "fixed left-[84px] bottom-4 w-72 border rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.35)] z-[100] transition-colors duration-500",
-                      !isSidebarCollapsed && "left-[260px]",
-                      isDarkMode ? "glass-panel border-white/10" : "glass-panel-light border-slate-200/60"
-                    )}
-                  >
-                     <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/5">
-                        <div className={cn("w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-bold text-xl shadow-lg ring-2 ring-white/10", layoutTheme.gradientStart, layoutTheme.gradientVia, layoutTheme.gradientEnd, layoutTheme.shadowGlow)}>
-                          {finalUser?.name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                           <h4 className={cn("text-sm font-black uppercase tracking-tighter", isDarkMode ? "text-white" : "text-slate-900")}>{finalUser?.name || 'Usuário'}</h4>
-                           <p className={cn("text-[8px] font-black uppercase tracking-widest mt-0.5", layoutTheme.accentText)}>{finalUser?.role}</p>
-                        </div>
-                     </div>
-
-                     <div className="space-y-5">
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                          <div className="flex items-center gap-2"><Shield className={cn("w-3.5 h-3.5", layoutTheme.accentText)} /> STATUS_PRO</div>
-                          <div className={isDarkMode ? "text-white" : "text-slate-900"}>RANK {effectiveRank}</div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-[9px] font-black text-slate-400 tracking-[0.2em] uppercase">
-                            <span>Exp de Sincronia</span>
-                            <span className={isDarkMode ? "text-white" : "text-slate-900"}>{(finalUser?.xp || 0) % 100}%</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/5">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${(finalUser?.xp || 0) % 100}%` }}
-                              className={cn(
-                                "h-full rounded-full", layoutTheme.accentBg, layoutTheme.shadowGlow
-                              )}
-                            />
-                          </div>
-                        </div>
-                     </div>
-                     
-                     <div className={cn(
-                       "absolute left-[-6px] bottom-10 w-3 h-3 border-l border-b rotate-45 transition-colors duration-500",
-                       isDarkMode ? "bg-slate-900 border-slate-700/50" : "bg-white border-slate-200"
-                     )} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  Perfis
+                </button>
+              )}
+              <button
+                onClick={handleLogout}
+                className="ygn-icon-button text-slate-500 hover:text-red-500 hover:bg-red-500/10"
+                title="Sair"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
-          </motion.aside>
-
+          </aside>
           {/* Main Content */}
           <main 
             className="flex-1 flex flex-col min-w-0 overflow-hidden relative"
-            onClick={() => {
-              if (isUserDetailsVisible) setIsUserDetailsVisible(false);
-            }}
           >
             {/* Header */}
               <header 
-              onClick={() => {
-                if (isUserDetailsVisible) setIsUserDetailsVisible(false);
-              }}
               className={cn(
-                "h-20 border-b flex items-center justify-between px-8 z-20 shrink-0 transition-colors duration-1000 group/header",
+                "h-20 border-b flex items-center justify-between px-8 z-20 shrink-0 overflow-hidden transition-colors duration-300",
                 layoutTheme.glassInfo, layoutTheme.border
               )}
             >
@@ -562,7 +471,7 @@ export default function App() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 relative">
                     <h1 className={cn("text-xl font-black uppercase tracking-tighter flex items-center gap-2", isDarkMode ? "text-white" : "text-slate-900")}>
-                      {finalUser?.name?.replace(/^adm\s+/i, '').split(' ')[0] || 'Usuário'}
+                      {finalUser?.name?.replace(/^adm\s+/i, '').split(' ')[0] || 'Usuario'}
                     </h1>
                     <div className="flex items-center gap-1.5 cursor-help">
                       <span className={cn("text-[8px] text-white px-2 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm", layoutTheme.accentBg)}>{finalUser?.operationalMode}</span>
@@ -574,7 +483,7 @@ export default function App() {
                     "flex items-center gap-2 px-3 py-1 rounded-lg border shadow-sm transition-colors duration-500",
                     isDarkMode ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-200"
                   )}>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Nível {finalUser?.level || 1}</span>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Nivel {finalUser?.level || 1}</span>
                   </div>
                   
                   {/* Comando Supremo - Fragmentos e Simulador */}
@@ -584,10 +493,6 @@ export default function App() {
                       layoutTheme.bgDim,
                       isDarkMode ? "border-white/10" : "border-slate-200"
                     )}>
-                      {/* Badge Momonga Effect */}
-                      <div className={cn("absolute -top-1.5 -left-1.5 w-4 h-4 rounded-md border flex items-center justify-center shadow-lg rotate-12 z-10", layoutTheme.accentBg, isDarkMode ? "border-white/10" : "border-white/20")}>
-                        <span className="text-[10px] text-white font-overlord font-black -rotate-12 leading-none">∞</span>
-                      </div>
 
                        {/* Fragmento Launcher */}
                        <button
@@ -596,14 +501,14 @@ export default function App() {
                            if (!simulationState.isActive) setShowFragmentSelector(true);
                          }}
                          disabled={simulationState.isActive}
-                         title={simulationState.isActive ? "Saia da simulacao para trocar o fragmento real" : "Fragmentos do Criador Supremo"}
+                         title={simulationState.isActive ? "Saia da simulacao para trocar foco" : "Foco operacional"}
                          className={cn(
-                           "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 group/frag",
+                           "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors duration-200 group/frag",
                            simulationState.isActive && "opacity-50 cursor-not-allowed",
                            isDarkMode ? "hover:bg-slate-800" : "hover:bg-white"
                          )}
                        >
-                         <Layers className={cn("w-3.5 h-3.5 transition-transform group-hover/frag:scale-110", layoutTheme.accentText)} />
+                         <Layers className={cn("w-3.5 h-3.5", layoutTheme.accentText)} />
                          <span className={cn("text-[9px] font-black uppercase tracking-widest", layoutTheme.accentText)}>{currentFragment}</span>
                        </button>
 
@@ -611,15 +516,15 @@ export default function App() {
 
                        {/* Simulador Launcher */}
                        <button
-                         onClick={openSupremeSimulator}
-                         title="Simulador dos Seres Supremos"
+                         onClick={openSimulationProfile}
+                         title="Abrir perfil fixo de simulacao"
                          className={cn(
-                           "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 group/sim relative",
+                           "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors duration-200 group/sim relative",
                            isDarkMode ? "hover:bg-slate-800" : "hover:bg-white"
                          )}
                        >
                          <span className={cn(
-                           "text-[9px] font-black uppercase tracking-widest transition-all",
+                           "text-[9px] font-black uppercase tracking-widest transition-colors",
                            isDarkMode ? "text-slate-400 group-hover/sim:text-slate-300" : "text-slate-500 group-hover/sim:text-slate-700"
                          )}>
                            Simulador
@@ -633,7 +538,7 @@ export default function App() {
                   <button 
                     onClick={() => setIsDarkMode(!isDarkMode)}
                     className={cn(
-                      "relative h-10 w-24 rounded-full p-1 transition-all duration-500 border overflow-hidden",
+                      "relative h-10 w-24 rounded-full p-1 transition-colors duration-200 border overflow-hidden",
                       isDarkMode ? "bg-slate-900 border-slate-800 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]" : "bg-slate-100 border-slate-200 shadow-inner"
                     )}
                   >
@@ -665,17 +570,17 @@ export default function App() {
                  {(user?.role === NazarickRole.MOMONGA && isSidebarCollapsed) && (
                    <button 
                     onClick={() => setShowPermissions(true)}
-                    className={cn("flex items-center gap-2 px-4 py-2 text-white rounded-xl text-[10px] font-black transition-all uppercase tracking-widest", layoutTheme.accentBg, layoutTheme.shadowGlow)}
+                    className={cn("flex items-center gap-2 px-4 py-2 text-white rounded-lg text-[10px] font-black transition-colors uppercase tracking-widest", layoutTheme.accentBg)}
                    >
-                     <Shield className="w-3.5 h-3.5" /> Gestão
+                     <Shield className="w-3.5 h-3.5" /> Gestao
                    </button>
                  )}
                  <div className="h-8 w-px bg-slate-500/20 mx-2"></div>
                  <div className="flex items-center gap-3">
-                   <button className="p-2.5 text-slate-400 hover:bg-slate-500/10 rounded-xl transition-all"><Search className="w-4 h-4" /></button>
+                   <button className="ygn-icon-button text-slate-400 hover:bg-slate-500/10"><Search className="w-4 h-4" /></button>
                    <button 
                      onClick={() => setView('profiles')}
-                     className="p-2.5 text-slate-400 hover:bg-slate-500/10 rounded-xl transition-all"
+                     className="ygn-icon-button text-slate-400 hover:bg-slate-500/10"
                      title="Trocar Perfil"
                    >
                      <LayoutGrid className="w-4 h-4" />
@@ -687,17 +592,17 @@ export default function App() {
 
             {/* Content Area */}
             <div className={cn(
-              "flex-1 overflow-y-auto p-8 relative scrollbar-hide transition-colors duration-1000",
+              "flex-1 overflow-y-auto p-8 relative scrollbar-hide transition-colors duration-300",
               layoutTheme.bgMain
             )}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={view}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  className="max-w-7xl mx-auto space-y-8"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="max-w-7xl mx-auto space-y-8 ygn-view-surface"
                 >
                   {view === 'dashboard' && (
                     <Dashboard 
@@ -722,8 +627,25 @@ export default function App() {
                   {view === 'strategy' && <Strategy user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} currentFragment={currentFragment} />}
                   {view === 'scheduling' && <Scheduling user={finalUser} profile={activeProfile!} isDarkMode={isDarkMode} currentFragment={currentFragment} />}
                   {view === 'admin' && <AdminPanel />}
+                  {view === 'simulation' && user?.role === NazarickRole.MOMONGA && (
+                    <SimulationSpace
+                      realUser={user}
+                      simulatedUser={finalUser!}
+                      activeProfile={activeProfile}
+                      isDarkMode={isDarkMode}
+                      onExit={leaveSimulationProfile}
+                      onAdjust={openSupremeSimulator}
+                      onQuickApply={quickApplySimulationPatch}
+                      onSaveReport={() => alert('Relatorio da simulacao preparado para os logs locais do YGN.')}
+                      onQueueApproval={() => {
+                        alert('Simulacao enviada para a fila de aprovacao interna.');
+                        exitSimulation();
+                      }}
+                      onApplyToReal={applySimulationToReal}
+                    />
+                  )}
                   
-                  {['campaigns', 'links', 'reports', 'users', 'finance'].includes(view) && (
+                  {['campaigns', 'links', 'reports', 'users', 'finance', 'agents', 'media', 'integrations'].includes(view) && (
                     <div className={cn(
                       "flex flex-col items-center justify-center p-20 border border-dashed rounded-3xl transition-colors duration-500",
                       isDarkMode ? "bg-slate-900 border-slate-700 text-slate-400" : "bg-white border-slate-200 text-slate-300"
@@ -731,8 +653,8 @@ export default function App() {
                       <div className={cn("w-20 h-20 rounded-full flex items-center justify-center mb-6", layoutTheme.bgDim)}>
                         <Layout className={cn("w-10 h-10 opacity-40", layoutTheme.accentText)} />
                       </div>
-                      <h3 className={cn("font-bold text-2xl tracking-tight mb-2 uppercase", isDarkMode ? "text-white" : "text-slate-800")}>Interface em Manutenção</h3>
-                      <p className="text-sm text-slate-500 italic max-w-sm text-center font-medium">Os artesãos de Nazarick estão calibrando este setor. Disponível em breve no YGGNAROK.</p>
+                      <h3 className={cn("font-bold text-2xl tracking-tight mb-2 uppercase", isDarkMode ? "text-white" : "text-slate-800")}>Interface em Manutencao</h3>
+                      <p className="text-sm text-slate-500 italic max-w-sm text-center font-medium">Este setor esta preparado para receber os proximos modulos do YGGNAROK.</p>
                     </div>
                   )}
                 </motion.div>
@@ -749,23 +671,6 @@ export default function App() {
     )}
 
         <AnimatePresence>
-          {simulationState.isActive && user?.role === NazarickRole.MOMONGA && finalUser && (
-            <SimulationSpace
-              realUser={user}
-              simulatedUser={finalUser}
-              activeProfile={activeProfile}
-              isDarkMode={isDarkMode}
-              onExit={exitSimulation}
-              onAdjust={openSupremeSimulator}
-              onSaveReport={() => alert('Relatorio da simulacao preparado para os logs locais do YGN.')}
-              onQueueApproval={() => {
-                alert('Simulacao enviada para a fila de aprovacao interna.');
-                exitSimulation();
-              }}
-              onApplyToReal={applySimulationToReal}
-            />
-          )}
-
           {showSupremeSimulator && user?.role === NazarickRole.MOMONGA && (
                <SupremeSimulator 
                  realUser={user}
