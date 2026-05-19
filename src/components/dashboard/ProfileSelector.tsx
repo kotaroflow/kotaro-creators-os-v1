@@ -9,7 +9,6 @@ import { cn } from '../../lib/utils';
 
 
 const DEMO_PROFILES_KEY = 'ygn.presentation.profiles';
-const LEGACY_DEMO_PROFILES_KEY = 'kotaro.presentation.profiles';
 
 const defaultProfiles = (userId: string): Profile[] => [
   {
@@ -33,7 +32,7 @@ const defaultProfiles = (userId: string): Profile[] => [
 ];
 
 const readLocalProfiles = (userId: string): Profile[] => {
-  const saved = localStorage.getItem(DEMO_PROFILES_KEY) || localStorage.getItem(LEGACY_DEMO_PROFILES_KEY);
+  const saved = localStorage.getItem(DEMO_PROFILES_KEY);
   if (!saved) {
     const profiles = defaultProfiles(userId);
     localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(profiles));
@@ -44,7 +43,6 @@ const readLocalProfiles = (userId: string): Profile[] => {
     const parsed = JSON.parse(saved) as Profile[];
     const migrated = parsed.length > 0 ? parsed : defaultProfiles(userId);
     localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(migrated));
-    localStorage.removeItem(LEGACY_DEMO_PROFILES_KEY);
     return migrated;
   } catch {
     const profiles = defaultProfiles(userId);

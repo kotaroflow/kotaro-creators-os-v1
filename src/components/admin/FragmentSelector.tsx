@@ -21,10 +21,10 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
       subtitle: 'Comércio & Expansão',
       description: 'Focado em vendas, afiliados, campanhas, produtos, links, comissões, funis e análise de desempenho comercial.',
       icon: DollarSign,
-      color: 'from-amber-400 to-yellow-600',
-      lightBg: 'bg-amber-50 border-amber-200',
-      darkBg: 'bg-amber-950/30 border-amber-500/20',
-      activeBorder: 'border-amber-500 ring-4 ring-amber-500/20'
+      color: 'from-amber-200/78 to-yellow-400/58',
+      lightBg: 'glass-panel-light border-amber-200/50',
+      darkBg: 'glass-panel border-amber-200/18',
+      activeBorder: 'border-amber-200/60 ring-2 ring-amber-200/18'
     },
     {
       id: CreatorFragment.KOTARO,
@@ -32,10 +32,10 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
       subtitle: 'Forja & Oficina',
       description: 'Focado em ideias, roteiros, prompts, imagens, vídeos, edição, áudios, trends e adaptação de identidade.',
       icon: PenTool,
-      color: 'from-blue-400 to-blue-600',
-      lightBg: 'bg-blue-50 border-blue-200',
-      darkBg: 'bg-blue-950/30 border-blue-500/20',
-      activeBorder: 'border-blue-500 ring-4 ring-blue-500/20'
+      color: 'from-sky-200/76 to-cyan-400/54',
+      lightBg: 'glass-panel-light border-sky-200/50',
+      darkBg: 'glass-panel border-sky-200/18',
+      activeBorder: 'border-sky-200/60 ring-2 ring-sky-200/18'
     },
     {
       id: CreatorFragment.MOMONGA,
@@ -43,36 +43,36 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
       subtitle: 'Autoridade & Regras',
       description: 'Focado em configurações, cargos, regras, World Items, sistema de evolução, Rank, e segurança estrutural.',
       icon: Shield,
-      color: 'from-amber-300 to-yellow-700',
-      lightBg: 'bg-amber-50 border-amber-200',
-      darkBg: 'bg-amber-950/25 border-amber-400/25',
-      activeBorder: 'border-amber-400 ring-4 ring-amber-400/20'
+      color: 'from-yellow-200/78 to-amber-400/58',
+      lightBg: 'glass-panel-light border-amber-200/52',
+      darkBg: 'glass-panel border-yellow-200/18',
+      activeBorder: 'border-yellow-200/60 ring-2 ring-yellow-200/18'
     }
   ];
 
   const getThemeColor = () => {
     switch (activeFragment) {
-      case CreatorFragment.MATHEUS: return "bg-amber-500";
-      case CreatorFragment.KOTARO: return "bg-blue-500";
-      case CreatorFragment.MOMONGA: return "bg-amber-500";
-      default: return "bg-indigo-500";
+      case CreatorFragment.MATHEUS: return "bg-amber-200/70";
+      case CreatorFragment.KOTARO: return "bg-sky-200/70";
+      case CreatorFragment.MOMONGA: return "bg-yellow-200/70";
+      default: return "bg-slate-200/70";
     }
   };
 
   const themeColor = getThemeColor();
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/45">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/28 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className={cn(
-          "w-full max-w-5xl rounded-3xl border overflow-hidden shadow-2xl flex flex-col",
+          "w-full max-w-5xl rounded-lg border overflow-hidden flex flex-col",
           isDarkMode ? "glass-panel border-white/10" : "glass-panel-light border-slate-200/70"
         )}
       >
-        <div className={cn("p-8 relative overflow-hidden", isDarkMode ? "bg-white/5 border-white/10" : "bg-white/35 border-white/50")}>
+        <div className="p-8 relative overflow-hidden border-b border-white/12">
            <div className={cn("absolute inset-x-0 top-0 h-px pointer-events-none transition-colors", themeColor)} />
            <div className={cn("absolute inset-x-10 bottom-0 h-px pointer-events-none transition-colors opacity-40", themeColor)} />
            
@@ -128,16 +128,16 @@ export default function FragmentSelector({ activeFragment, onSelect, onClose, is
                     key={frag.id}
                     onClick={() => onSelect(frag.id)}
                     className={cn(
-                      "relative group p-6 rounded-2xl border text-left transition-all duration-300 overflow-hidden flex flex-col",
+                    "relative group p-6 rounded-lg border text-left transition-all duration-300 overflow-hidden flex flex-col",
                       isDarkMode ? frag.darkBg : frag.lightBg,
-                      isActive ? frag.activeBorder + " shadow-xl scale-[1.02]" : "hover:border-slate-400 hover:-translate-y-1"
+                      isActive ? frag.activeBorder + " scale-[1.01]" : "hover:border-white/60 hover:-translate-y-1"
                     )}
                   >
                     <div className={cn("absolute inset-x-4 top-0 h-px opacity-40 transition-opacity bg-gradient-to-r", frag.color)} />
                     
                     <div className="relative z-10 flex flex-col h-full">
                       <div className={cn(
-                        "w-14 h-14 rounded-2xl mb-6 flex items-center justify-center text-white shadow-lg bg-gradient-to-br",
+                        "w-14 h-14 rounded-lg mb-6 flex items-center justify-center text-white bg-gradient-to-br",
                         frag.color
                       )}>
                         <frag.icon className="w-7 h-7" />

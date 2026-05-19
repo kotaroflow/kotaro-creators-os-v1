@@ -24,13 +24,11 @@ import Evolution from './components/evolution/Evolution';
 import Library from './components/library/Library';
 import Strategy from './components/strategy/Strategy';
 import Scheduling from './components/scheduling/Scheduling';
-import YggnarokTransition, { YGGNAROK_TOTAL_DURATION, YggnarokContext, YggnarokMode } from './components/transitions/YggnarokTransition';
 
 import SupremeSimulator from './components/admin/SupremeSimulator';
 import FragmentSelector from './components/admin/FragmentSelector';
 
 const AUTH_STORAGE_KEY = 'ygn.auth.user';
-const LEGACY_AUTH_STORAGE_KEY = 'kotaro.auth.user';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -50,51 +48,11 @@ export default function App() {
   const [isUserDetailsVisible, setIsUserDetailsVisible] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [view, setView] = useState<'profiles' | 'dashboard' | 'creation' | 'strategy' | 'campaigns' | 'links' | 'scheduling' | 'reports' | 'library' | 'users' | 'evolution' | 'finance' | 'admin'>('profiles');
-  const [yggnarok, setYggnarok] = useState<{ active: boolean; mode: YggnarokMode; roleName?: string; context?: YggnarokContext; runId: number }>({ active: false, mode: 'default', context: 'system', runId: 0 });
-  const yggnarokTimersRef = React.useRef<{ done?: number }>({});
   
   const finalUser = user ? (simulationState.isActive ? { ...user, ...(simulationState.marioneteNazarick || {}) } as User : user) : null;
   const currentFragment = simulationState.isActive ? simulationState.simulatedFragment : activeFragment;
   const layoutTheme = getLayoutTheme(currentFragment, isDarkMode);
   const effectiveRank = getEffectiveRank(finalUser);
-
-  const fragmentToYggnarokMode = (fragment: CreatorFragment | null | undefined): YggnarokMode => {
-    switch (fragment) {
-      case CreatorFragment.MATHEUS:
-        return 'matheus';
-      case CreatorFragment.KOTARO:
-        return 'kotaro';
-      case CreatorFragment.MOMONGA:
-        return 'momonga';
-      default:
-        return 'default';
-    }
-  };
-
-  const startYggnarok = (
-    request: YggnarokMode | { mode: YggnarokMode; roleName?: string; context?: YggnarokContext },
-    onMidpoint?: () => void
-  ) => {
-    const nextTransition = typeof request === 'string' ? { mode: request, context: 'fragment' as YggnarokContext } : request;
-    window.clearTimeout(yggnarokTimersRef.current.done);
-    if (onMidpoint) onMidpoint();
-    setYggnarok((current) => ({ active: true, runId: current.runId + 1, ...nextTransition }));
-    yggnarokTimersRef.current.done = window.setTimeout(() => {
-      setYggnarok((current) => ({ ...current, active: false }));
-    }, YGGNAROK_TOTAL_DURATION);
-  };
-
-  useEffect(() => {
-    return () => {
-      window.clearTimeout(yggnarokTimersRef.current.done);
-    };
-  }, []);
-
-  const roleTransition = (roleName?: string) => ({
-    mode: roleName ? 'role' as YggnarokMode : fragmentToYggnarokMode(currentFragment),
-    roleName,
-    context: roleName ? 'role' as YggnarokContext : 'fragment' as YggnarokContext
-  });
 
   const openSupremeSimulator = (event?: React.MouseEvent<HTMLElement>) => {
     event?.stopPropagation();
@@ -120,19 +78,16 @@ export default function App() {
   const handlePresentationLogin = () => {
     const demoUser = createPresentationUser();
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(demoUser));
-    localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
     flushSync(() => {
       setUser(demoUser);
       setAuthError('');
       setLoading(false);
       setView('profiles');
     });
-    startYggnarok({ mode: 'role', roleName: demoUser.role, context: 'role' });
   };
 
   const handleLogout = async () => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
-    localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
     setUser(null);
     setActiveProfile(null);
     setView('profiles');
@@ -140,17 +95,15 @@ export default function App() {
   };
 
   useEffect(() => {
-    const savedUser = localStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
+    const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
 
     if (savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser) as User;
         setUser(parsedUser);
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsedUser));
-        localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
       } catch {
         localStorage.removeItem(AUTH_STORAGE_KEY);
-        localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
       }
     }
 
@@ -158,7 +111,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.body.className = layoutTheme.bgMain + " transition-colors duration-1000";
+    document.body.className = layoutTheme.bgMain + " ygn-os-body transition-colors duration-1000";
   }, [layoutTheme.bgMain]);
 
 
@@ -169,7 +122,6 @@ export default function App() {
         setIsUserDetailsVisible(false); // Close details on navigation
         setView(newView);
       });
-      startYggnarok(roleTransition(finalUser?.role || user?.role));
     } else {
       setView(newView);
     }
@@ -268,7 +220,7 @@ export default function App() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className={cn(
-            "flex h-screen overflow-hidden font-sans transition-colors duration-1000",
+            "ygn-app-shell flex h-screen overflow-hidden font-sans transition-colors duration-1000",
             layoutTheme.bgMain, layoutTheme.textPrimary
           )}
         >
@@ -805,16 +757,6 @@ export default function App() {
     </motion.div>
     )}
 
-      <YggnarokTransition
-        active={yggnarok.active}
-        mode={yggnarok.mode}
-        roleName={yggnarok.roleName}
-        context={yggnarok.context}
-        runId={yggnarok.runId}
-        onComplete={() => setYggnarok((current) => ({ ...current, active: false }))}
-      />
-         
-        
         <AnimatePresence>
           {showSupremeSimulator && user?.role === NazarickRole.MOMONGA && (
                <SupremeSimulator 
@@ -837,7 +779,6 @@ export default function App() {
                      }));
                      setShowSupremeSimulator(false);
                    });
-                   startYggnarok(roleTransition(simulatedUser.role));
                  }}
                  onDiscard={() => {
                    setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
@@ -860,7 +801,6 @@ export default function App() {
                     setActiveFragment(fragment);
                   }
                 });
-                startYggnarok({ mode: fragmentToYggnarokMode(fragment), context: 'fragment' });
               }}
               onClose={() => setShowFragmentSelector(false)}
               isDarkMode={isDarkMode}
