@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { User, Profile, NazarickRole } from '../../types';
 import { Plus, LogOut, Sparkles, Building2, ChevronRight, Edit2, Trash2, X, Save, Settings } from 'lucide-react';
@@ -18,6 +18,10 @@ const defaultProfiles = (userId: string): Profile[] => [
     objective: 'Planejar, criar e organizar conteudos de alto impacto',
     socialAccounts: {},
     ownerId: userId,
+    memberIds: [userId],
+    managerIds: [userId],
+    editorIds: [],
+    viewerIds: [],
     createdAt: new Date().toISOString()
   },
   {
@@ -27,9 +31,42 @@ const defaultProfiles = (userId: string): Profile[] => [
     objective: 'Transformar ideias em campanhas e roteiros',
     socialAccounts: {},
     ownerId: userId,
+    memberIds: [userId],
+    managerIds: [userId],
+    editorIds: [],
+    viewerIds: [],
     createdAt: new Date().toISOString()
   }
 ];
+
+const normalizeProfileAccess = (profile: Profile): Profile => {
+  const memberIds = Array.from(new Set([
+    profile.ownerId,
+    ...(profile.memberIds || []),
+    ...(profile.managerIds || []),
+    ...(profile.editorIds || []),
+    ...(profile.viewerIds || []),
+  ].filter(Boolean)));
+
+  return {
+    ...profile,
+    memberIds,
+    managerIds: profile.managerIds || (profile.ownerId ? [profile.ownerId] : []),
+    editorIds: profile.editorIds || [],
+    viewerIds: profile.viewerIds || [],
+  };
+};
+
+const canAccessProfile = (profile: Profile, user: User) => {
+  if (user.role === NazarickRole.MOMONGA) return true;
+  const normalized = normalizeProfileAccess(profile);
+  return normalized.ownerId === user.uid
+    || normalized.memberIds?.includes(user.uid)
+    || normalized.managerIds?.includes(user.uid)
+    || normalized.editorIds?.includes(user.uid)
+    || normalized.viewerIds?.includes(user.uid)
+    || user.managedProfileIds?.includes(normalized.id);
+};
 
 const readLocalProfiles = (userId: string): Profile[] => {
   const saved = localStorage.getItem(DEMO_PROFILES_KEY);
@@ -41,7 +78,7 @@ const readLocalProfiles = (userId: string): Profile[] => {
 
   try {
     const parsed = JSON.parse(saved) as Profile[];
-    const migrated = parsed.length > 0 ? parsed : defaultProfiles(userId);
+    const migrated = (parsed.length > 0 ? parsed : defaultProfiles(userId)).map(normalizeProfileAccess);
     localStorage.setItem(DEMO_PROFILES_KEY, JSON.stringify(migrated));
     return migrated;
   } catch {
@@ -75,12 +112,12 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
       return;
     }
 
-    const q = user.role === NazarickRole.MOMONGA 
-      ? collection(db, 'profiles')
-      : query(collection(db, 'profiles'), where('ownerId', '==', user.uid));
-      
-    const unsub = onSnapshot(q, (snapshot) => {
-      const pList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Profile));
+    const profilesRef = collection(db, 'profiles');
+
+    const unsub = onSnapshot(profilesRef, (snapshot) => {
+      const pList = snapshot.docs
+        .map(doc => normalizeProfileAccess({ id: doc.id, ...doc.data() } as Profile))
+        .filter(profile => canAccessProfile(profile, user));
       setProfiles(pList);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'profiles');
@@ -101,6 +138,10 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
           ...newProfile,
           id: `local-${Date.now()}`,
           ownerId: user.uid,
+          memberIds: [user.uid],
+          managerIds: [user.uid],
+          editorIds: [],
+          viewerIds: [],
           socialAccounts: {},
           createdAt: new Date().toISOString()
         };
@@ -117,6 +158,10 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
         ...newProfile,
         id: profileRef.id,
         ownerId: user.uid,
+        memberIds: [user.uid],
+        managerIds: [user.uid],
+        editorIds: [],
+        viewerIds: [],
         socialAccounts: {},
         createdAt: new Date().toISOString()
       });
@@ -124,7 +169,9 @@ export default function ProfileSelector({ user, onSelect, onLogout, isDarkMode, 
       await setDoc(doc(db, 'profiles', profileRef.id, 'access', user.uid), {
         userId: user.uid,
         profileId: profileRef.id,
-        accessLevel: 'Admin'
+        accessLevel: 'Owner',
+        userName: user.name,
+        userEmail: user.email
       });
 
       setIsCreating(false);

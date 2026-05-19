@@ -5,19 +5,19 @@ export enum CreatorFragment {
 }
 
 export enum NazarickRole {
-  MOMONGA = "Momonga — Criador Supremo",
-  ALBEDO = "Albedo — Supervisora dos Guardiões",
-  DEMIURGE = "Demiurge — Guardião do 7º Andar",
-  COCYTUS = "Cocytus — Guardião da Execução",
-  PANDORAS_ACTOR = "Pandora’s Actor — Guardião da Tesouraria",
-  VICTIM = "Victim — Guardião de Contenção",
-  GARGANTUA = "Gargantua — Guardião do 4º Andar",
-  SEBAS_TIAN = "Sebas Tian — Mordomo-Chefe",
-  SHALLTEAR = "Shalltear Bloodfallen — Guardiã do 1º ao 3º Andar",
-  AURA = "Aura Bella Fiora — Guardiã do 6º Andar",
-  MARE = "Mare Bello Fiore — Guardião do 6º Andar",
-  PESTONYA = "Pestonya — Empregada-Chefe",
-  PLEIADES = "Pleiades — Esquadrão de Batalha",
+  MOMONGA = "Momonga - Criador Supremo",
+  ALBEDO = "Albedo - Supervisora dos Guardioes",
+  DEMIURGE = "Demiurge - Guardiao do 7o Andar",
+  COCYTUS = "Cocytus - Guardiao da Execucao",
+  PANDORAS_ACTOR = "Pandora's Actor - Guardiao da Tesouraria",
+  VICTIM = "Victim - Guardiao de Contencao",
+  GARGANTUA = "Gargantua - Guardiao do 4o Andar",
+  SEBAS_TIAN = "Sebas Tian - Mordomo-Chefe",
+  SHALLTEAR = "Shalltear Bloodfallen - Guardia do 1o ao 3o Andar",
+  AURA = "Aura Bella Fiora - Guardia do 6o Andar",
+  MARE = "Mare Bello Fiore - Guardiao do 6o Andar",
+  PESTONYA = "Pestonya - Empregada-Chefe",
+  PLEIADES = "Pleiades - Esquadrao de Batalha",
 }
 
 export enum OperationalMode {
@@ -31,8 +31,7 @@ export const getEffectiveRank = (user: User | null | undefined): string => {
   if (!user) return 'F';
   const rawRank = (user.rank || 'F').trim();
   if (user.role !== NazarickRole.MOMONGA) return rawRank;
-  
-  // Simulation logic for Supreme beings
+
   switch(user.operationalMode) {
     case OperationalMode.EASY: return 'F';
     case OperationalMode.NORMAL: return 'C';
@@ -44,6 +43,7 @@ export const getEffectiveRank = (user: User | null | undefined): string => {
 
 export interface MarioneteDeNazarick extends Partial<User> {
   id?: string;
+  displayName?: string;
   isRealUser?: false;
   origin?: "simulation";
   type?: "simulation_only";
@@ -52,7 +52,6 @@ export interface MarioneteDeNazarick extends Partial<User> {
 export interface SimulationState {
   isActive: boolean;
   marioneteNazarick: MarioneteDeNazarick | null;
-  simulatedFragment: CreatorFragment;
 }
 
 export interface User {
@@ -62,13 +61,16 @@ export interface User {
   role: NazarickRole;
   xp: number;
   level: number;
-  levelLimitBreak?: boolean; // Se true, o usuário pode passar do level 999
+  levelLimitBreak?: boolean;
   rank: string;
   karma: number;
   operationalMode: OperationalMode;
   createdAt: string;
   tags?: string[];
+  managedProfileIds?: string[];
 }
+
+export type ProfileAccessLevel = "Owner" | "Admin" | "Editor" | "Viewer";
 
 export interface Profile {
   id: string;
@@ -77,6 +79,10 @@ export interface Profile {
   objective: string;
   socialAccounts: Record<string, string>;
   ownerId: string;
+  memberIds?: string[];
+  managerIds?: string[];
+  editorIds?: string[];
+  viewerIds?: string[];
   createdAt: string;
 }
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc, setDoc, deleteDoc, getDocs, where } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, collection, query, onSnapshot, doc, setDoc, deleteDoc, getDocs, where, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { Profile } from '../../types';
+import { Profile, ProfileAccessLevel } from '../../types';
 import { UserPlus, Shield, X, Crown, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,7 +13,7 @@ interface ManagePermissionsProps {
 export default function ManagePermissions({ profile, onClose }: ManagePermissionsProps) {
   const [accessList, setAccessList] = useState<any[]>([]);
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newRole, setNewRole] = useState('Creator');
+  const [newRole, setNewRole] = useState<ProfileAccessLevel>('Editor');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -41,12 +41,24 @@ export default function ManagePermissions({ profile, onClose }: ManagePermission
       }
 
       const targetUser = userSnap.docs[0].data();
+      const arrayFieldByRole: Partial<Record<ProfileAccessLevel, keyof Profile>> = {
+        Admin: 'managerIds',
+        Editor: 'editorIds',
+        Viewer: 'viewerIds',
+      };
+
       await setDoc(doc(db, 'profiles', profile.id, 'access', targetUser.uid), {
         userId: targetUser.uid,
         profileId: profile.id,
         accessLevel: newRole,
         userName: targetUser.name,
         userEmail: targetUser.email
+      });
+
+      const targetArray = arrayFieldByRole[newRole];
+      await updateDoc(doc(db, 'profiles', profile.id), {
+        memberIds: arrayUnion(targetUser.uid),
+        ...(targetArray ? { [targetArray]: arrayUnion(targetUser.uid) } : {}),
       });
 
       setNewUserEmail('');
@@ -65,6 +77,12 @@ export default function ManagePermissions({ profile, onClose }: ManagePermission
     const accessPath = `profiles/${profile.id}/access/${userId}`;
     try {
       await deleteDoc(doc(db, 'profiles', profile.id, 'access', userId));
+      await updateDoc(doc(db, 'profiles', profile.id), {
+        memberIds: arrayRemove(userId),
+        managerIds: arrayRemove(userId),
+        editorIds: arrayRemove(userId),
+        viewerIds: arrayRemove(userId),
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, accessPath);
     }
@@ -115,7 +133,7 @@ export default function ManagePermissions({ profile, onClose }: ManagePermission
              <select 
               className="nazarick-input py-2"
               value={newRole}
-              onChange={e => setNewRole(e.target.value)}
+              onChange={e => setNewRole(e.target.value as ProfileAccessLevel)}
              >
                <option value="Admin">Administrador</option>
                <option value="Editor">Editor</option>

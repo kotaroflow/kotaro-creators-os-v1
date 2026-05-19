@@ -103,6 +103,15 @@ body.ygn-os-body,
   opacity: 0.42;
 }
 
+.ygn-glass-grid {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,0.08) 1px, transparent 1px),
+    linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.12) 48%, transparent 70%);
+  background-size: 38px 38px, 38px 38px, 100% 100%;
+  mask-image: linear-gradient(to bottom, black, transparent 96%);
+}
+
 .glass-panel,
 .glass-panel-light,
 .glass-control,

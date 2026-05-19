@@ -29,6 +29,16 @@ Agentes/IAs existem como modulos funcionais:
 - acoes bloqueadas;
 - logs.
 
+Regras obrigatorias para agentes:
+
+- varios usuarios sao padrao do OS;
+- um usuario pode cuidar de um ou mais perfis;
+- sempre checar vinculo usuario-perfil antes de sugerir leitura, escrita ou automacao;
+- fragmentos pertencem a conta suprema e sao foco operacional real;
+- simulacao pertence a conta suprema e e sandbox de teste;
+- agentes nao podem misturar fragmento com simulacao;
+- em simulacao, agentes nao devem ler nem alterar MATHEUS, KOTARO ou MOMONGA.
+
 Nao criar agora:
 
 - avatar;

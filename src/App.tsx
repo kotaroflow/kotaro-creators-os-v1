@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './lib/firebase';
-import { User, Profile, NazarickRole, OperationalMode, getEffectiveRank, CreatorFragment, SimulationState } from './types';
+import { User, Profile, NazarickRole, OperationalMode, getEffectiveRank, CreatorFragment, SimulationState, MarioneteDeNazarick } from './types';
 import { Layout, LogOut, Shield, User as UserIcon, LayoutDashboard, Target, Share2, Library as LibraryIcon, BarChart3, Users, Settings, TrendingUp, Plus, Search, Trash2, Calendar, FileAudio, Menu, LayoutGrid, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, getRankTheme } from './lib/utils';
@@ -27,15 +27,64 @@ import Scheduling from './components/scheduling/Scheduling';
 
 import SupremeSimulator from './components/admin/SupremeSimulator';
 import FragmentSelector from './components/admin/FragmentSelector';
+import SimulationSpace from './components/admin/SimulationSpace';
 
 const AUTH_STORAGE_KEY = 'ygn.auth.user';
+
+const normalizeRole = (role: unknown): NazarickRole => {
+  const raw = String(role || '');
+  const currentRoles = Object.values(NazarickRole) as string[];
+  if (currentRoles.includes(raw)) return raw as NazarickRole;
+  if (raw.includes('Momonga')) return NazarickRole.MOMONGA;
+  if (raw.includes('Albedo')) return NazarickRole.ALBEDO;
+  if (raw.includes('Demiurge')) return NazarickRole.DEMIURGE;
+  if (raw.includes('Cocytus')) return NazarickRole.COCYTUS;
+  if (raw.includes('Pandora')) return NazarickRole.PANDORAS_ACTOR;
+  if (raw.includes('Victim')) return NazarickRole.VICTIM;
+  if (raw.includes('Gargantua')) return NazarickRole.GARGANTUA;
+  if (raw.includes('Sebas')) return NazarickRole.SEBAS_TIAN;
+  if (raw.includes('Shalltear')) return NazarickRole.SHALLTEAR;
+  if (raw.includes('Aura')) return NazarickRole.AURA;
+  if (raw.includes('Mare')) return NazarickRole.MARE;
+  if (raw.includes('Pestonya')) return NazarickRole.PESTONYA;
+  if (raw.includes('Pleiades')) return NazarickRole.PLEIADES;
+  return NazarickRole.PESTONYA;
+};
+
+const normalizeUser = (rawUser: User): User => ({
+  ...rawUser,
+  role: normalizeRole(rawUser.role),
+  operationalMode: Object.values(OperationalMode).includes(rawUser.operationalMode)
+    ? rawUser.operationalMode
+    : OperationalMode.NORMAL,
+  managedProfileIds: rawUser.managedProfileIds || [],
+});
+
+const sanitizeSimulationPatch = (draft: MarioneteDeNazarick | null): Partial<User> => {
+  if (!draft) return {};
+
+  const patch: Partial<User> = {
+    role: draft.role ? normalizeRole(draft.role) : undefined,
+    rank: draft.rank,
+    level: draft.level,
+    levelLimitBreak: draft.levelLimitBreak,
+    xp: draft.xp,
+    karma: draft.karma,
+    operationalMode: draft.operationalMode,
+    tags: draft.tags,
+    managedProfileIds: draft.managedProfileIds,
+  };
+
+  return Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined)
+  ) as Partial<User>;
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [simulationState, setSimulationState] = useState<SimulationState>({
     isActive: false,
-    marioneteNazarick: null,
-    simulatedFragment: CreatorFragment.MOMONGA
+    marioneteNazarick: null
   });
   const [showSupremeSimulator, setShowSupremeSimulator] = useState(false);
   const [activeFragment, setActiveFragment] = useState<CreatorFragment>(CreatorFragment.MOMONGA);
@@ -49,8 +98,8 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [view, setView] = useState<'profiles' | 'dashboard' | 'creation' | 'strategy' | 'campaigns' | 'links' | 'scheduling' | 'reports' | 'library' | 'users' | 'evolution' | 'finance' | 'admin'>('profiles');
   
-  const finalUser = user ? (simulationState.isActive ? { ...user, ...(simulationState.marioneteNazarick || {}) } as User : user) : null;
-  const currentFragment = simulationState.isActive ? simulationState.simulatedFragment : activeFragment;
+  const finalUser = user ? (simulationState.isActive ? normalizeUser({ ...user, ...(simulationState.marioneteNazarick || {}) } as User) : normalizeUser(user)) : null;
+  const currentFragment = activeFragment;
   const layoutTheme = getLayoutTheme(currentFragment, isDarkMode);
   const effectiveRank = getEffectiveRank(finalUser);
 
@@ -59,6 +108,31 @@ export default function App() {
     flushSync(() => {
       setShowSupremeSimulator(true);
     });
+  };
+
+  const exitSimulation = () => {
+    setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
+  };
+
+  const applySimulationToReal = async () => {
+    if (!simulationState.marioneteNazarick || !user?.uid) return;
+
+    if (!confirm('ATENCAO: voce esta prestes a aplicar a simulacao ao usuario real. Esta acao deve ser usada apenas depois de revisar o teste. Prosseguir?')) {
+      return;
+    }
+
+    const confirmUpdate = sanitizeSimulationPatch(simulationState.marioneteNazarick);
+
+    if (user.uid === 'presentation-user') {
+      const nextUser = normalizeUser({ ...user, ...confirmUpdate } as User);
+      setUser(nextUser);
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
+    } else {
+      await updateDoc(doc(db, 'users', user.uid), confirmUpdate);
+    }
+
+    alert('Alteracoes aplicadas ao usuario real do OS.');
+    exitSimulation();
   };
 
   const createPresentationUser = (): User => ({
@@ -72,7 +146,8 @@ export default function App() {
     karma: 100,
     operationalMode: OperationalMode.SUPREME,
     createdAt: new Date().toISOString(),
-    tags: ['ainz ooal gown']
+    tags: ['ainz ooal gown'],
+    managedProfileIds: []
   });
 
   const handlePresentationLogin = () => {
@@ -99,7 +174,7 @@ export default function App() {
 
     if (savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser) as User;
+        const parsedUser = normalizeUser(JSON.parse(savedUser) as User);
         setUser(parsedUser);
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsedUser));
       } catch {
@@ -221,8 +296,10 @@ export default function App() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className={cn(
             "ygn-app-shell flex h-screen overflow-hidden font-sans transition-colors duration-1000",
+            simulationState.isActive && "hidden",
             layoutTheme.bgMain, layoutTheme.textPrimary
           )}
+          aria-hidden={simulationState.isActive}
         >
           {/* Sidebar */}
           <motion.aside 
@@ -514,10 +591,15 @@ export default function App() {
 
                        {/* Fragmento Launcher */}
                        <button
-                         onClick={(e) => { e.stopPropagation(); setShowFragmentSelector(true); }}
-                         title="Fragmentos do Criador Supremo"
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           if (!simulationState.isActive) setShowFragmentSelector(true);
+                         }}
+                         disabled={simulationState.isActive}
+                         title={simulationState.isActive ? "Saia da simulacao para trocar o fragmento real" : "Fragmentos do Criador Supremo"}
                          className={cn(
                            "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 group/frag",
+                           simulationState.isActive && "opacity-50 cursor-not-allowed",
                            isDarkMode ? "hover:bg-slate-800" : "hover:bg-white"
                          )}
                        >
@@ -602,97 +684,6 @@ export default function App() {
               </div>
             </header>
 
-            {/* Simulation Active Banner */}
-            <AnimatePresence>
-              {simulationState.isActive && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className={cn(
-                    "border-b overflow-hidden relative z-30 shadow-md transition-colors duration-700",
-                    layoutTheme.border,
-                    layoutTheme.accentBg
-                  )}
-                >
-                  <div className="max-w-7xl mx-auto px-8 py-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 animate-pulse">
-                        <Shield className="w-3.5 h-3.5 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black tracking-widest text-white/90 uppercase mb-0.5">MODO DE SIMULAÇÃO ATIVO — AMBIENTE 100% SIMULADO</p>
-                        <div className="flex items-center gap-2 text-xs font-medium text-white shadow-sm">
-                          <span className={layoutTheme.accentText}>{finalUser?.role}</span>
-                          <span className="w-1 h-1 rounded-full bg-white/40" />
-                          <span>Rank {finalUser?.rank || 'F'}</span>
-                          <span className="w-1 h-1 rounded-full bg-white/40" />
-                          <span>Lv {finalUser?.level === Infinity ? '∞' : finalUser?.level || 1}</span>
-                          <span className="w-1 h-1 rounded-full bg-white/40" />
-                          <span>{finalUser?.operationalMode}</span>
-                        </div>
-                      </div>
-                    </div>
-                     <div className="flex items-center gap-2">
-                       <button 
-                         onClick={() => {
-                           alert('Relatório da simulação gerado e salvo nos arquivos locais.');
-                         }}
-                         className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/90 text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10"
-                       >
-                         Salvar Relatório
-                       </button>
-                       <button 
-                         onClick={() => {
-                           alert('Mudanças enviadas para a fila de aprovação central.');
-                           setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
-                         }}
-                         className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/90 text-[10px] font-black uppercase tracking-widest transition-colors border border-white/10"
-                       >
-                         Enviar P/ Aprovação
-                       </button>
-                       {user?.role === NazarickRole.MOMONGA && (
-                         <button 
-                           onClick={async () => {
-                             if (confirm('ATENÇÃO: Você está prestes a aplicar as mudanças do ambiente de simulação ao SUPREMO ESTADO REAL do sistema. Esta ação é irreversível. Prosseguir?')) {
-                               if (simulationState.marioneteNazarick && user?.uid) {
-                                 const confirmUpdate = {
-                                    ...simulationState.marioneteNazarick
-                                 };
-                                  if (user.uid === 'presentation-user') {
-                                    const nextUser = { ...user, ...confirmUpdate } as User;
-                                    setUser(nextUser);
-                                    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
-                                  } else {
-                                    await updateDoc(doc(db, 'users', user.uid), confirmUpdate);
-                                  }
-                                 alert('Alterações aplicadas ao estado real do OS.');
-                                 setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }));
-                               }
-                             }
-                           }}
-                           className="px-4 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-100 text-[10px] font-black uppercase tracking-widest transition-colors border border-red-500/30"
-                         >
-                           Aplicar ao Sistema Real
-                         </button>
-                       )}
-                       <button 
-                         onClick={openSupremeSimulator}
-                         className={cn("px-4 py-1.5 rounded-lg text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm ml-2", layoutTheme.accentBg, layoutTheme.shadowGlow)}
-                       >
-                         Ajustar Simulação
-                       </button>
-                       <button 
-                         onClick={() => setSimulationState(prev => ({ ...prev, isActive: false, marioneteNazarick: null }))}
-                         className={cn("px-4 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-[10px] font-black uppercase tracking-widest transition-colors shadow-md", layoutTheme.accentText)}
-                       >
-                         Descartar / Sair
-                       </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Content Area */}
             <div className={cn(
@@ -758,11 +749,28 @@ export default function App() {
     )}
 
         <AnimatePresence>
+          {simulationState.isActive && user?.role === NazarickRole.MOMONGA && finalUser && (
+            <SimulationSpace
+              realUser={user}
+              simulatedUser={finalUser}
+              activeProfile={activeProfile}
+              isDarkMode={isDarkMode}
+              onExit={exitSimulation}
+              onAdjust={openSupremeSimulator}
+              onSaveReport={() => alert('Relatorio da simulacao preparado para os logs locais do YGN.')}
+              onQueueApproval={() => {
+                alert('Simulacao enviada para a fila de aprovacao interna.');
+                exitSimulation();
+              }}
+              onApplyToReal={applySimulationToReal}
+            />
+          )}
+
           {showSupremeSimulator && user?.role === NazarickRole.MOMONGA && (
                <SupremeSimulator 
                  realUser={user}
                  simulationState={simulationState}
-                 onStartSimulation={(simulatedUser, targetFragment) => {
+                 onStartSimulation={(simulatedUser) => {
                    flushSync(() => {
                      setSimulationState(prev => ({
                        ...prev,
@@ -774,8 +782,7 @@ export default function App() {
                           type: "simulation_only",
                           origin: "simulation",
                           isRealUser: false,
-                       },
-                       simulatedFragment: targetFragment || activeFragment
+                       }
                      }));
                      setShowSupremeSimulator(false);
                    });
@@ -789,36 +796,17 @@ export default function App() {
                />
           )}
 
-          {showFragmentSelector && user?.role === NazarickRole.MOMONGA && (
+          {showFragmentSelector && !simulationState.isActive && user?.role === NazarickRole.MOMONGA && (
             <FragmentSelector
-              activeFragment={currentFragment}
+              activeFragment={activeFragment}
               onSelect={(fragment) => {
                 flushSync(() => {
                   setShowFragmentSelector(false);
-                  if (simulationState.isActive) {
-                    setSimulationState(prev => ({ ...prev, simulatedFragment: fragment }));
-                  } else {
-                    setActiveFragment(fragment);
-                  }
+                  setActiveFragment(fragment);
                 });
               }}
               onClose={() => setShowFragmentSelector(false)}
               isDarkMode={isDarkMode}
-              userMode={finalUser?.operationalMode || OperationalMode.NORMAL}
-              onChangeMode={async (mode) => {
-                if (!user?.uid) return;
-                if (simulationState.isActive) {
-                  setSimulationState(prev => ({ ...prev, marioneteNazarick: { ...prev.marioneteNazarick, operationalMode: mode } }));
-                } else {
-                  if (user.uid === 'presentation-user') {
-                    const nextUser = { ...user, operationalMode: mode };
-                    setUser(nextUser);
-                    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
-                  } else {
-                    await updateDoc(doc(db, 'users', user.uid), { operationalMode: mode });
-                  }
-                }
-              }}
             />
           )}
         </AnimatePresence>

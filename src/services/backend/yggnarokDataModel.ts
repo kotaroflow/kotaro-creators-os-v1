@@ -24,14 +24,14 @@ export const yggnarokDataModel: YgnEntityBlueprint[] = [
   {
     name: "users",
     purpose: "Membros confiaveis que acessam o YGGNAROK.",
-    primaryFields: ["id", "name", "email", "role", "rank", "level", "xp", "karma", "operationalMode", "createdAt"],
-    notes: ["Google Login fica desativado por enquanto.", "Auth futura deve ser isolada em backend seguro."],
+    primaryFields: ["id", "name", "email", "role", "rank", "level", "xp", "karma", "operationalMode", "managedProfileIds", "createdAt"],
+    notes: ["Google Login fica desativado por enquanto.", "Auth futura deve ser isolada em backend seguro.", "Presenca de varios usuarios e padrao do OS, mesmo sendo privado para familia/confiaveis."],
   },
   {
     name: "profiles",
     purpose: "Perfis de trabalho, nichos, marcas internas e contextos de criacao.",
-    primaryFields: ["id", "ownerId", "name", "niche", "objective", "socialAccounts", "createdAt"],
-    notes: ["Todo conteudo, metrica e ativo deve apontar para um perfil."],
+    primaryFields: ["id", "ownerId", "memberIds", "managerIds", "editorIds", "viewerIds", "name", "niche", "objective", "socialAccounts", "createdAt"],
+    notes: ["Todo conteudo, metrica e ativo deve apontar para um perfil.", "Um usuario pode cuidar de um ou mais perfis por vinculo explicito de acesso."],
   },
   {
     name: "evolution_cards",
@@ -55,7 +55,7 @@ export const yggnarokDataModel: YgnEntityBlueprint[] = [
     name: "agent_modules",
     purpose: "Agentes/IAs funcionais sem visual proprio neste ciclo.",
     primaryFields: ["id", "name", "function", "context", "allowedActions", "blockedActions", "permissions", "enabled"],
-    notes: ["Nao criar avatar, skin, mascote ou tela visual individual agora.", "Agentes operam por regras, contexto e permissoes."],
+    notes: ["Nao criar avatar, skin, mascote ou tela visual individual agora.", "Agentes operam por regras, contexto e permissoes.", "Agentes devem distinguir fragment_focus de simulation_sandbox antes de sugerir ou executar qualquer acao."],
   },
   {
     name: "agent_logs",
@@ -67,7 +67,7 @@ export const yggnarokDataModel: YgnEntityBlueprint[] = [
     name: "permissions",
     purpose: "Permissoes por usuario, perfil, agente e acao.",
     primaryFields: ["id", "subjectType", "subjectId", "resourceType", "resourceId", "action", "effect"],
-    notes: ["Base para separar iniciante, profissional, admin e simulacao."],
+    notes: ["Base para separar iniciante, profissional, admin e simulacao.", "Fragmentos nao concedem permissao por si so; simulacao nao troca fragmento real."],
   },
   {
     name: "media_assets",
@@ -105,4 +105,14 @@ export const agentModuleRules = {
   visualIdentityEnabled: false,
   allowedNow: ["nome", "funcao", "regras", "permissoes", "contexto", "acoes permitidas", "acoes bloqueadas"],
   blockedNow: ["avatar", "skin", "mascote", "card visual proprio", "tela propria de agente"],
+  operationalBoundaries: {
+    multiUserDefault: true,
+    supremeAccountOnly: ["fragment_focus", "simulation_sandbox"],
+    fragmentFocus:
+      "MATHEUS, KOTARO e MOMONGA sao focos operacionais da conta suprema. Eles organizam a area de trabalho real e nao representam ambiente de teste.",
+    simulationSandbox:
+      "Simulacao e um ambiente isolado da conta suprema para testar usuario, cargo, rank, permissoes e vinculos com perfis. Ela nao pode alterar ou herdar fragmento.",
+    agentInstruction:
+      "Antes de agir, todo agente deve identificar se esta em OS real, fragment_focus ou simulation_sandbox. Nunca misturar estado de fragmento com estado de simulacao.",
+  },
 };
